@@ -16,7 +16,6 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) {
     initLayers(fileName, layerNb);
     Window::stopRefrech();
     std::cout << "=== Combinatorial Optimizer ===" << std::endl;
-	std::cerr << "BBB " << _nbReadyLayers << ' ' << this << std::endl;
     shuffle();
     std::cout << "===== Geometric Optimizer =====" << std::endl;
     optimize();

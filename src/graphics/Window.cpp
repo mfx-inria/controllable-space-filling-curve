@@ -36,7 +36,7 @@ Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
     int w = std::sqrt((num_pix * Image::_imgWidth) / Image::_imgHeight);
     int h = num_pix / w;
     glutInitWindowSize(w, h);   // Set the window's initial width & height
-    glutCreateWindow("HAM"); // Create a window with the given title
+    glutCreateWindow("Space Filling Curve"); // Create a window with the given title
 
     glutKeyboardFunc(keyCallback);
     glutMouseFunc(mouseCallback);
