@@ -3,10 +3,31 @@
 //
 
 #include "managers/GeneticAlgorithm.h"
+#include "managers/Printer.h"
+#include "graphics/Window.h"
 #include <algorithm>
 #include <iostream>
 #include <atomic>
 #include <GL/glut.h>
+
+void GeneticAlgorithm::process(const std::string &fileName, int layerNb) {
+	// Algorithm
+    std::cout << "===== Graph Construction ======" << std::endl;
+    initLayers(fileName, layerNb);
+    Window::stopRefrech();
+    std::cout << "=== Combinatorial Optimizer ===" << std::endl;
+	std::cerr << "BBB " << _nbReadyLayers << ' ' << this << std::endl;
+    shuffle();
+    std::cout << "===== Geometric Optimizer =====" << std::endl;
+    optimize();
+
+	// Write GCODE
+	Printer printer(Machine::CR10S_PRO);
+    std::cout << "======= Writting GCODE ========" << std::endl;
+    printer.printToGcode(_layers, "colorVary", true);
+    printer.printToGcode(_layers, "colorNoVary", false);
+    std::cout << "============ DONE =============" << std::endl;
+}
 
 ////////////////////////
 //
@@ -19,18 +40,6 @@ GeneticAlgorithm::GeneticAlgorithm()
     _nbIndividuals = _nbChampion * _sonPerChamp;
 }
 
-void GeneticAlgorithm::changeParameters(std::vector<std::string> &args)
-{
-    for (auto &a : args)
-    {
-        if (auto idx = a.find("gen="); idx != std::string::npos)
-        {
-            a.erase(a.begin() + idx, a.begin() + idx + 4);
-            _genNumber = stoi(a);
-        }
-    }
-}
-
 void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer)
 {
     _layers.resize(nbLayer);
@@ -41,7 +50,7 @@ void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer)
 	const auto fun = [&](bool mainThread) {
 		int k;
 		while((k = K++) < nbLayer) {
-			_layers[k].initLayer(fileName + std::to_string(k) + ".svg", k);
+			_layers[k].initLayer(str_format(fileName, k), k);
 			done[k] = true;
 			if(mainThread) {
     			while(done[_nbReadyLayers]) ++ _nbReadyLayers;

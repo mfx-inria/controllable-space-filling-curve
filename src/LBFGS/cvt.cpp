@@ -1059,6 +1059,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 
 void Smoother::optimize(Eigen::VectorXd &x) {
     _prevX.resize(x.size());
+	saveCycle(x);
 
     // smooth
     const auto check = [&](const glm::vec2 &a, int i)->bool {

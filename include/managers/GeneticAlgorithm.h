@@ -32,10 +32,10 @@ public:
     void                finishUpGeneration();
     void                initChampions();
     int                 getDiff(const LocalOperator &, const LocalOperator &) const;
-    void                changeParameters(std::vector<std::string> &);
     void                optimize();
     int                 getGen() const;
     int                 getNbReadyLayers() const;
+	void				process(const std::string &fileName, int layerNb);
 };
 
 #endif //HAMILTON_GENETICALGORITHM_H

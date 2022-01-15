@@ -17,13 +17,12 @@ SET(CMAKE_CXX_FLAGS "-std=c++11 -pthread -O3")
 add_executable(Hamilton
         src/main.cpp
         src/graphics/Globals.cpp
-        src/graphics/HamCore.cpp
+        src/graphics/Window.cpp
         src/graphics/triangulate.cpp
         src/LBFGS/clipper.cpp
         src/LBFGS/cvt.cpp
         src/localAlgo/LocalOperator.cpp
         src/localAlgo/ObjectiveFunctions.cpp
-        src/managers/CycleManager.cpp
         src/managers/GeneticAlgorithm.cpp
         src/managers/GraphCreator.cpp
         src/managers/Printer.cpp

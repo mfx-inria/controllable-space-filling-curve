@@ -238,7 +238,7 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
         Globals::_seed = Globals::_rd();
     std::mt19937  gen = std::mt19937(Globals::_seed);
     for (int i = 0; i < borders.size(); ++i) {
-        float air = 1.46f; // ideal is 1.3
+        float air = 1.66f; // ideal is 1.3
         // float air = 1.05f; // ideal is 1.3
         Box box;
         for (const auto &point : borders[i]._points) box.update(point);
@@ -457,7 +457,7 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
     graph._originalLinks.resize(newSize);
     graph._points.resize(newSize);
 }
-
+#include <iostream>
 void GraphCreator::getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
     shapes.clear();
     std::vector<Shape> holes;

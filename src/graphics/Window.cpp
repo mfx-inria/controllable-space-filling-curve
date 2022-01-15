@@ -3,10 +3,9 @@
 // Created by adrien_bedel on 25/09/19.
 //
 
-#include "graphics/HamCore.h"
+#include "graphics/Window.h"
 
 #include <GL/glut.h>
-#include <future>
 #include <iostream>
 
 const float zoom_step = 1.1f;
@@ -21,8 +20,7 @@ const float zoom_step = 1.1f;
 ///////////////////////
 
 // main
-HamCore::HamCore(int argc, char **argv, const std::string &windowName, Machine machine) : CycleManager(argc, argv, Printer(machine)) {
-    std::srand(std::time(nullptr));
+Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
     currentInstance = this;
 
     _isRefresh = true;
@@ -38,38 +36,35 @@ HamCore::HamCore(int argc, char **argv, const std::string &windowName, Machine m
     int w = std::sqrt((num_pix * Image::_imgWidth) / Image::_imgHeight);
     int h = num_pix / w;
     glutInitWindowSize(w, h);   // Set the window's initial width & height
-    glutCreateWindow(windowName.c_str()); // Create a window with the given title
+    glutCreateWindow("HAM"); // Create a window with the given title
 
     glutKeyboardFunc(keyCallback);
     glutMouseFunc(mouseCallback);
     glutMotionFunc(motionCallback);
-    glutDisplayFunc(HamCore::drawCallback);
-
-    // start program
-    auto r = std::async(std::launch::async, &CycleManager::transposeThread, this);
-
-    glutMainLoop();
+    glutDisplayFunc(Window::drawCallback);
 }
 
-void HamCore::addToStack(int layer) { currentInstance->_stack.push_back(layer); }
-void HamCore::stopRefrech() { currentInstance->_isRefresh = false; }
+void Window::start() { glutMainLoop(); }
 
-void HamCore::drawCallback() { currentInstance->display(); }
-void HamCore::keyCallback(unsigned char key, int x, int y) { currentInstance->keyPressed(key, x, y); }
-void HamCore::mouseCallback(int button, int state, int x, int y) { currentInstance->mouseClicked(button, state, x, y); }
-void HamCore::motionCallback(int x, int y) { currentInstance->mouseMoved(x, y); }
+void Window::addToStack(int layer) { currentInstance->_stack.push_back(layer); }
+void Window::stopRefrech() { currentInstance->_isRefresh = false; }
+
+void Window::drawCallback() { currentInstance->display(); }
+void Window::keyCallback(unsigned char key, int x, int y) { currentInstance->keyPressed(key, x, y); }
+void Window::mouseCallback(int button, int state, int x, int y) { currentInstance->mouseClicked(button, state, x, y); }
+void Window::motionCallback(int x, int y) { currentInstance->mouseMoved(x, y); }
 
 // key manager
-void HamCore::keyPressed(unsigned char key, int x, int y) {
+void Window::keyPressed(unsigned char key, int x, int y) {
     switch (key) {
         // go to next layer
         case 'r':
-            if(_ga.getNbReadyLayers() > 0) _layerIndex = (_layerIndex + 1) % _ga.getNbReadyLayers();
+            if(_ga->getNbReadyLayers() > 0) _layerIndex = (_layerIndex + 1) % _ga->getNbReadyLayers();
             glutPostRedisplay();
             break;
         // go to previous layer
         case 't':
-            if(_ga.getNbReadyLayers() > 0) _layerIndex = (_layerIndex + _ga.getNbReadyLayers() - 1) % _ga.getNbReadyLayers();
+            if(_ga->getNbReadyLayers() > 0) _layerIndex = (_layerIndex + _ga->getNbReadyLayers() - 1) % _ga->getNbReadyLayers();
             glutPostRedisplay();
             break;
         case 'z':
@@ -91,13 +86,13 @@ void HamCore::keyPressed(unsigned char key, int x, int y) {
     }
 }
 
-void HamCore::replaceCenter() {
+void Window::replaceCenter() {
     float dist = glm::distance(_WinCenter, .5f*Globals::_SVGSize);
     float max_allowed_dist = .5f*glm::length(Globals::_SVGSize) *  (1.f - 1.f / _zoom);
     if(dist > max_allowed_dist) _WinCenter = .5f*Globals::_SVGSize + max_allowed_dist / dist * (_WinCenter - .5f*Globals::_SVGSize);
 }
 
-glm::vec2 HamCore::getCoord(int x0, int y0) {
+glm::vec2 Window::getCoord(int x0, int y0) {
     float W = (float) glutGet(GLUT_WINDOW_WIDTH);
     float H = (float) glutGet(GLUT_WINDOW_HEIGHT);
     float scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y) * _zoom;
@@ -107,14 +102,14 @@ glm::vec2 HamCore::getCoord(int x0, int y0) {
     return p;
 }
 
-void HamCore::mouseMoved(int x0, int y0) {
+void Window::mouseMoved(int x0, int y0) {
     if(!_leftDown) return;
     _WinCenter += _lastClikedPos - getCoord(x0, y0);
     replaceCenter();
     glutPostRedisplay();
 }
 
-void HamCore::mouseClicked(int button, int state, int x0, int y0) {
+void Window::mouseClicked(int button, int state, int x0, int y0) {
     if(state == GLUT_UP) {
         if(button == GLUT_LEFT_BUTTON) {
             _leftDown = false;
@@ -145,7 +140,7 @@ void HamCore::mouseClicked(int button, int state, int x0, int y0) {
 }
 
 // Display
-void HamCore::displayCycle() {
+void Window::displayCycle() {
     const float W = (float) glutGet(GLUT_WINDOW_WIDTH);
     const float H = (float) glutGet(GLUT_WINDOW_HEIGHT);
     glLoadIdentity();
@@ -156,7 +151,7 @@ void HamCore::displayCycle() {
     glEnable(GL_LINE_SMOOTH);
     glLineWidth(3.0f);
 
-    const Layer &layer = _ga._layers[_layerIndex];
+    const Layer &layer = _ga->_layers[_layerIndex];
 
     const auto drawVertex = [&](const glm::vec2 &point){ glVertex2f(point.x, point.y); };
 
@@ -267,7 +262,7 @@ void HamCore::displayCycle() {
     }
 }
 
-void HamCore::display() {
+void Window::display() {
     while(!_stack.empty()) {
         int l = _stack.back();
         _stack.pop_back();
@@ -275,7 +270,7 @@ void HamCore::display() {
     }
     glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
     glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)
-    if(_ga.getNbReadyLayers() > 0) displayCycle();
+    if(_ga->getNbReadyLayers() > 0) displayCycle();
     glutSwapBuffers();
     if(_isRefresh) glutPostRedisplay();
 }

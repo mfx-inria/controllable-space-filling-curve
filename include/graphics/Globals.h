@@ -50,7 +50,7 @@ public:
     inline static double        _lengthToClear; // in frame in length
 
 public:
-    static void         initVariables();
+    static void         initVariables(int layerNb);
     static float        polygonArea(const std::vector<glm::vec2> &);
     static bool         isInPoly(const std::vector<glm::vec2> &, const glm::vec2 &);
     static bool         intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
@@ -119,5 +119,13 @@ public:
     Graph(){}
     static glm::vec2 getCellCenter(const std::vector<int> &, const std::vector<glm::vec2> &);
 };
+
+template<typename ...Args>
+std::string str_format(const std::string &s, Args ...args) {
+	int size = std::snprintf(nullptr, 0, s.c_str(), args...) + 1;
+	auto buf = std::make_unique<char[]>(size);
+	std::snprintf(buf.get(), size, s.c_str(), args...);
+	return std::string(buf.get(), buf.get()+size-1);
+}
 
 #endif //HAMILTON_GLOBALS_H
