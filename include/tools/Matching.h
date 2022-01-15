@@ -55,7 +55,6 @@ private:
     int     distInTree(std::shared_ptr<Tree>, int );
     int     getIdx(int, int);
     bool    splitFourConnected();
-	void	saveGraph();
     std::vector<int>    getIdxs(int, int);
     std::vector<int>    getPath(int, int);
 

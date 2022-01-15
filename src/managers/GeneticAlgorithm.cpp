@@ -34,35 +34,31 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) {
 //
 ////////////////////////
 
-GeneticAlgorithm::GeneticAlgorithm()
-{
+GeneticAlgorithm::GeneticAlgorithm() {
     _nbIndividuals = _nbChampion * _sonPerChamp;
 }
 
-void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer)
-{
+void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer) {
     _layers.resize(nbLayer);
 	_nbReadyLayers = 0;
 
 	std::atomic<int> K = 0;
 	std::vector<bool> done(nbLayer, false);
-	const auto fun = [&](bool mainThread) {
+	const auto fun = [&]() {
 		int k;
 		while((k = K++) < nbLayer) {
 			_layers[k].initLayer(str_format(fileName, k), k);
 			done[k] = true;
-			if(mainThread) {
-    			while(done[_nbReadyLayers]) ++ _nbReadyLayers;
-				glutPostRedisplay();
-			}
+    		while(_nbReadyLayers < nbLayer && done[_nbReadyLayers]) ++ _nbReadyLayers;
+			glutPostRedisplay();
 		}
 	};
 
 	const int T = std::min((int) Globals::_nbThread, nbLayer) - 1;
     std::vector<std::thread> threads;
 	threads.reserve(T);
-	for(int t = 0; t < T; ++t) threads.emplace_back(fun, false);
-	fun(true);
+	for(int t = 0; t < T; ++t) threads.emplace_back(fun);
+	fun();
 	for(std::thread &t : threads) t.join();
 	_nbReadyLayers = nbLayer;
 	glutPostRedisplay();

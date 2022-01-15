@@ -216,10 +216,7 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 {
     graphs.clear();
     getShapeFromSVG(fileName, borders);
-    if (!_isSVGEdit)
-        fusedShapes = fuseInkscapeShapes(borders);
-    else
-        fusedShapes = fuseShapes(borders);
+    fusedShapes = fuseShapes(borders);
     //strokeZones = mergeStroke(fusedShapes);
     strokeZones = fusedShapes;
 
@@ -300,43 +297,6 @@ bool isNear(const Shape &shape, const glm::vec2 &p, float eps=1e-5f) {
     for(const std::vector<glm::vec2> &hole : shape._holes)
         if(isNear(hole, p, eps)) return true;
     return false;
-}
-
-std::vector<std::vector<Shape>>  GraphCreator::fuseInkscapeShapes(std::vector<Shape> &borders)
-{
-    // order shapes from big to small
-    std::reverse(borders.begin(), borders.end());
-    std::vector<Shape> outBorder;
-    std::vector<std::vector<Shape>> fusedShapes;
-
-    while (!borders.empty())
-    {
-        outBorder.push_back(borders[0]);
-        fusedShapes.push_back({outBorder.back()});
-        borders.erase(borders.begin());
-
-        for (int i = 0; i < outBorder.back()._holes.size(); i++)
-        {
-            auto hole = outBorder.back()._holes[i];
-            for (int j = 0; j < borders.size(); j++)
-            {
-                if (Globals::isInPoly(outBorder.back()._points, borders[j]._points[0]) &&
-                    abs(borders[j]._area - abs(Globals::polygonArea(hole))) < 1.f &&
-                    glm::distance(Globals::getCenter(borders[j]._points), Globals::getCenter(hole)) < 1.f)
-                {
-                    outBorder.back()._holes.erase(outBorder.back()._holes.begin() + i);
-                    outBorder.back()._holes.insert(outBorder.back()._holes.end(), borders[j]._holes.begin(), borders[j]._holes.end());
-                    outBorder.back()._area += borders[j]._area;
-                    fusedShapes.back().push_back(borders[j]);
-                    borders.erase(borders.begin() + j);
-                    i--;
-                    break;
-                }
-            }
-        }
-    }
-    borders = outBorder;
-    return fusedShapes;
 }
 
 std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &borders) {
@@ -457,36 +417,22 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
     graph._originalLinks.resize(newSize);
     graph._points.resize(newSize);
 }
-#include <iostream>
+
 void GraphCreator::getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
     shapes.clear();
     std::vector<Shape> holes;
     struct NSVGimage* image;
     image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
-    if(image == nullptr) throw ("file parser problem");
-    checkInkscape(fileName);
-    float tol = 0.05f;
+    if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
     for(NSVGshape *shape = image->shapes; shape != NULL; shape = shape->next) {
         std::vector<Shape> shapesAdd;
         std::vector<Shape> holesAdd;
         float maxArea = 0.f;
         for(NSVGpath *path = shape->paths; path != NULL; path = path->next) {
             Shape polygon;
-            if(_isInkscape) {
-                std::vector<glm::vec2> edges;
-                edges.emplace_back(path->pts[0], path->pts[1]);
-                for (int i = 0; i < path->npts - 1; i += 3) {
-                    float *p = &path->pts[i * 2];
-                    svgFlattenCubicBezier(edges, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], tol, 0);
-                    edges.pop_back();
-                }
-                edges.push_back(edges.front());
-                polygon._points = edges;
-            } else {
-                for (int i = 0; i < path->npts; i += 3) {
-                    float* p = &path->pts[i*2];
-                    polygon._points.emplace_back(p[0], p[1]);
-                }
+            for (int i = 0; i < path->npts; i += 3) {
+                float* p = &path->pts[i*2];
+                polygon._points.emplace_back(p[0], p[1]);
             }
             polygon._area = Globals::polygonArea(polygon._points);
             if(std::abs(polygon._area) > std::abs(maxArea)) maxArea = polygon._area;
@@ -520,27 +466,6 @@ void GraphCreator::getShapeFromSVG(const std::string &fileName, std::vector<Shap
         shapes.insert(shapes.end(), std::make_move_iterator(shapesAdd.begin()), std::make_move_iterator(shapesAdd.end()));
     }
     sort(shapes.begin(), shapes.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
-    if (!_isSVGEdit) {
-        for (int i = 0; i < shapes.size(); i++) {
-            for (int j = 0; j < shapes.size(); j++) {
-                if (i != j && shapes[j].isInside(shapes[i]._points[0])) {
-                    bool found = false;
-                    for (const auto &hole : shapes[j]._holes) {
-                        if (abs(abs(Globals::polygonArea(hole)) - abs(Globals::polygonArea(shapes[i]._points))) < 1.f &&
-                            glm::distance(Globals::getCenter(hole), Globals::getCenter(shapes[i]._points)) < 1.f) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        shapes[j]._holes.push_back(shapes[i]._points);
-                        std::reverse(shapes[j]._holes.back().begin(), shapes[j]._holes.back().end());
-                        shapes[j]._area -= abs(Globals::polygonArea(shapes[i]._points));
-                    }
-                }
-            }
-        }
-    }
     nsvgDelete(image);
 }
 
@@ -557,19 +482,4 @@ int GraphCreator::getColor(unsigned int color) {
         }
     }
     return index;
-}
-
-void GraphCreator::checkInkscape(const std::string &fileName) {
-    std::ifstream infile(fileName);
-    int i = 0;
-    while(infile.good() && i < 2) {
-        std::string sLine;
-        getline(infile, sLine);
-        if(sLine.find("SVGEdit") != std::string::npos)
-            _isSVGEdit = true;
-        if(sLine.find("Inkscape") != std::string::npos)
-            _isInkscape = true;
-        ++i;
-    }
-    infile.close();
 }

@@ -81,11 +81,9 @@ Matching::Matching(const Shape &border, Graph &graph) {
                     if(isLinked(_cLinks[a], b)) {
                         A = a;
                         B = b;
-                        //if(rand()&1) break;
                     }
                 }
                 if(A != -1) break;
-                //if(A != -1 && (rand()&1)) break;
             }
 
             if (A == -1) {  // (A, B) not found
@@ -137,8 +135,7 @@ Matching::Matching(const Shape &border, Graph &graph) {
     removeUnused(border);
 }
 
-void Matching::initUnion()
-{
+void Matching::initUnion() {
     _union = Union(_points.size());
     for(int i = 0; i < _points.size(); ++i)
         for(int j : _cLinks[i])
@@ -249,9 +246,7 @@ std::vector<int> Matching::getIdxs(int node, int parent) {
     return ans;
 }
 
-void Matching::fuseIslands()
-{
-	saveGraph();
+void Matching::fuseIslands() {
     if(_union.fullyMerged(_nbConnectedPoints)) return;
     int flip = 0;
     int N = _points.size();
@@ -278,7 +273,6 @@ void Matching::fuseIslands()
                                 createLink(path2[inc], path2[inc - 1]);
                             }
                             ++ flip;
-							saveGraph();
                             if(_union.fullyMerged(_nbConnectedPoints))
                                 {
                                     if(printFuseStats) std::cerr << "fuseIslands:  " << flip << " flips,  0 segment doubled" << std::endl;
@@ -372,7 +366,6 @@ void Matching::fuseIslands()
                 _originalLinks[k].push_back(k+1);
                 _originalLinks[k+1].push_back(k);
                 _union.merge(i, j);
-				saveGraph();
                 if(_union.fullyMerged(_nbConnectedPoints)) {
                     if(printFuseStats) std::cerr << "fuseIslands:  " << flip << " flips,  " << doubled << " segments doubled" << std::endl;
                     return;
@@ -381,27 +374,6 @@ void Matching::fuseIslands()
     }
     std::cout << "failed fusing islands" << std::endl;
     _succes = false;
-}
-
-void Matching::saveGraph() {
-	static int I = 0;
-	std::ofstream file("video/path_" + std::to_string(++I) + ".txt");
-	file << "POINTS " << _points.size() << '\n';
-	for(int i = 0; i < (int) _points.size(); ++i)
-        file << _points[i].x << ' ' << _points[i].y << '\n';
-	size_t ne = 0, nm = 0;
-	for(const auto link : _originalLinks) ne += link.size();
-	for(const auto link : _cLinks) nm += link.size();
-	ne /= 2; nm /= 2;
-	file << "EDGE " << ne << '\n';
-	for(int i = 0; i < (int) _originalLinks.size(); ++i)
-		for(int j : _originalLinks[i]) if(i < j)
-			file << i << ' ' << j << '\n';
-	file << "PATH " << nm << '\n';
-	for(int i = 0; i < (int) _cLinks.size(); ++i)
-		for(int j : _cLinks[i]) if(i < j)
-			file << i << ' ' << j << ' ' << _union.find(i) << '\n';
-	file.close();
 }
 
 void Matching::match()
