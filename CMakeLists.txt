@@ -19,6 +19,7 @@ add_executable(Hamilton
         src/graphics/Globals.cpp
         src/graphics/Window.cpp
         src/graphics/triangulate.cpp
+        src/graphics/DirectionField.cpp
         src/LBFGS/clipper.cpp
         src/LBFGS/cvt.cpp
         src/localAlgo/LocalOperator.cpp

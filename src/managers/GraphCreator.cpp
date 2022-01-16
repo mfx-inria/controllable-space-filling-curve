@@ -3,10 +3,12 @@
 //
 
 #include "managers/GraphCreator.h"
-#include <fstream>
 #define NANOSVG_IMPLEMENTATION		// Expands implementation
 #include "tools/nanosvg.h"
 #include "LBFGS/cvt.hpp"
+#include "graphics/DirectionField.h"
+
+#include <fstream>
 
 ////////////////////////////
 //                        //
@@ -54,16 +56,16 @@ bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
 	return false;
 }
 
-std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>> &fusedShapes, float eps) {
-	std::vector<std::vector<Shape>> strokeZones;
-	strokeZones.reserve(fusedShapes.size());
+std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, float eps) {
+	std::vector<std::vector<Shape>> colorZones;
+	colorZones.reserve(shapes.size());
 	const float eps2 = eps*eps;
-	for(const std::vector<Shape> &zones : fusedShapes) {
+	for(const std::vector<Shape> &zones : shapes) {
 		// Reorder to have consecutive stroke colors
 		std::vector<int> perm(zones.size());
 		for(int i = 0; i < perm.size(); ++i) perm[i] = i;
 		std::sort(perm.begin(), perm.end(), [&](int i, int j) { return zones[i]._printColor < zones[j]._printColor; });
-		strokeZones.emplace_back();
+		colorZones.emplace_back();
 
 		int Z0 = 0;
 
@@ -120,7 +122,7 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 			// Create pathes
 			std::vector<bool> toSee(graph._points.size(), true);
 			std::vector<std::vector<glm::vec2>> holes;
-			size_t start = strokeZones.back().size();
+			size_t start = colorZones.back().size();
 			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !graph._originalLinks[i].empty()) {
 					std::vector<glm::vec2> path;
 					int j = i;
@@ -134,30 +136,30 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 					float area = Globals::polygonArea(path);
 					if(area > 0.f) holes.emplace_back(std::move(path));
 					else {
-						strokeZones.back().emplace_back();
-						strokeZones.back().back()._points = std::move(path);
-						strokeZones.back().back()._area = -area;
-						strokeZones.back().back()._printColor = zones[perm[Z0-1]]._printColor;
+						colorZones.back().emplace_back();
+						colorZones.back().back()._points = std::move(path);
+						colorZones.back().back()._area = -area;
+						colorZones.back().back()._printColor = zones[perm[Z0-1]]._printColor;
 					}
 				}
 
 			// Add holes
-			std::sort(strokeZones.back().begin() + start, strokeZones.back().end(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
+			std::sort(colorZones.back().begin() + start, colorZones.back().end(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
 			for(std::vector<glm::vec2> &hole : holes)
-				for(size_t i = start; i < strokeZones.back().size(); ++i)
-					if(Globals::isInPoly(strokeZones.back()[i]._points, hole[0])) {
-						strokeZones.back()[i]._holes.emplace_back(std::move(hole));
+				for(size_t i = start; i < colorZones.back().size(); ++i)
+					if(Globals::isInPoly(colorZones.back()[i]._points, hole[0])) {
+						colorZones.back()[i]._holes.emplace_back(std::move(hole));
 						break;
 					}
 		}
 		// sort and remove area holes
-		std::sort(strokeZones.back().rbegin(), strokeZones.back().rend(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
-		for(Shape &zone : strokeZones.back())
+		std::sort(colorZones.back().rbegin(), colorZones.back().rend(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
+		for(Shape &zone : colorZones.back())
 			for(const std::vector<glm::vec2> &hole : zone._holes)
 				zone._area -= Globals::polygonArea(hole);
 
 	}
-	return strokeZones;
+	return colorZones;
 }
 
 float getDiag(const std::vector<Shape> &shapes) {
@@ -168,37 +170,35 @@ float getDiag(const std::vector<Shape> &shapes) {
 
 // Create Graph from an SVG file.
 void GraphCreator::graphFromSvg(const std::string &fileName,
-								std::vector<Shape> &borders,
-								std::vector<std::vector<Shape>> &fusedShapes,
-								std::vector<std::vector<Shape>> &strokeZones,
+								std::vector<Shape> &shapes,
+								std::vector<std::vector<Shape>> &objZones,
+								std::vector<std::vector<Shape>> &colorZones,
 								std::vector<Graph> &graphs,
 								int layerIndex)
 {
 	graphs.clear();
-	getShapeFromSVG(fileName, borders);
-	const float eps = 1e-5f * getDiag(borders);
-	fusedShapes = fuseShapes(borders, eps);
-	strokeZones = mergeStroke(fusedShapes, eps);
+	getShapeFromSVG(fileName, shapes);
+	const float eps = 1e-5f * getDiag(shapes);
+	objZones = fuseShapes(shapes, eps);
+	colorZones = mergeColorZones(objZones, eps);
 
 	// Compute triangulations
-	for(std::vector<Shape> &zones : fusedShapes)
-		for(Shape &zone : zones)
-			zone.triangulate();
-	for(std::vector<Shape> &zones : strokeZones)
-		for(Shape &zone : zones)
-			zone.triangulate();
+	for(auto shapes : {&objZones, &colorZones})
+		for(std::vector<Shape> &zones : *shapes)
+			for(Shape &zone : zones)
+				zone.triangulate();
 
-	Image::initVectorField(fusedShapes, borders, layerIndex);
+	DirectionField::initVectorField(objZones, shapes, layerIndex);
 
 	std::uniform_real_distribution<> dis(0.0, 1.0);
 	if (Globals::_isRandom)
 		Globals::_seed = Globals::_rd();
 	std::mt19937  gen = std::mt19937(Globals::_seed);
-	for (int i = 0; i < borders.size(); ++i) {
+	for (int i = 0; i < shapes.size(); ++i) {
 		float air = 1.66f; // ideal is 1.3
 		// float air = 1.05f; // ideal is 1.3
 		Box<double> box;
-		for (const auto &point : borders[i]._points) box.update(point);
+		for (const auto &point : shapes[i]._points) box.update(point);
 		std::vector<glm::vec2> toAdd;
 		for (float x = box.x0; x <= box.x1; x += air) {
 			int j = 1;
@@ -207,30 +207,30 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 				if((++j)&1) point.x -= (air / 2.f);
 				point.x += static_cast<float>(dis(gen)) * air / 20.f;
 				point.y += static_cast<float>(dis(gen)) * air / 20.f;
-				if(borders[i].isInside(point)) toAdd.push_back(point);
+				if(shapes[i].isInside(point)) toAdd.push_back(point);
 			}
 		}
 		if(toAdd.size() < 3) {
-			std::swap(borders[i], borders.back());
-			std::swap(fusedShapes[i], fusedShapes.back());
-			std::swap(strokeZones[i], strokeZones.back());
-			borders.pop_back();
-			fusedShapes.pop_back();
-			strokeZones.pop_back();
+			std::swap(shapes[i], shapes.back());
+			std::swap(objZones[i], objZones.back());
+			std::swap(colorZones[i], colorZones.back());
+			shapes.pop_back();
+			objZones.pop_back();
+			colorZones.pop_back();
 			-- i;
 			continue;
 		}
 
-		SegmentCVT cvt(&borders[i], box, layerIndex);
+		SegmentCVT cvt(&shapes[i], box, layerIndex);
 		graphs.push_back(cvt.optimize(toAdd));
 
 		// remove 2co
-		remove2coPoints(borders[i], graphs.back());
+		remove2coPoints(shapes[i], graphs.back());
 
 		// push points inside
 		for(glm::vec2 &p : graphs.back()._points) {
-			if(push_inside(borders[i]._points, p)) continue;
-			for(const std::vector<glm::vec2> &in : borders[i]._holes)
+			if(push_inside(shapes[i]._points, p)) continue;
+			for(const std::vector<glm::vec2> &in : shapes[i]._holes)
 				if(push_inside(in, p)) break;
 		}
 	}

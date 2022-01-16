@@ -4,6 +4,7 @@
 //
 
 #include "graphics/Window.h"
+#include "graphics/DirectionField.h"
 
 #include <GL/freeglut.h>
 #include <iostream>
@@ -33,7 +34,7 @@ Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
 
     // Initialize GLUT
     const int num_pix = 600000;
-    int w = std::sqrt((num_pix * Image::_imgWidth) / Image::_imgHeight);
+    int w = std::sqrt((num_pix * Globals::_SVGSize.x) / Globals::_SVGSize.y);
     int h = num_pix / w;
     glutInitWindowSize(w, h);   // Set the window's initial width & height
     glutCreateWindow("Space Filling Curve"); // Create a window with the given title
@@ -247,7 +248,7 @@ void Window::displayCycle() {
                 float cx = (dx + 13.f*i) / scale;
                 float cy = (dy + 13.f*j) / scale;
                 glm::vec2 p(cx, cy);
-                glm::vec2 v = Image::getVecAtPos(p, _layerIndex);
+                glm::vec2 v = DirectionField::getVecAtPos(p, _layerIndex);
                 float len = glm::length(v);
                 float angle = std::atan2(v.y, v.x) / 2.f;
                 float c = 5.7f * len * std::cos(angle) / scale;
@@ -266,7 +267,7 @@ void Window::display() {
     while(!_stack.empty()) {
         int l = _stack.back();
         _stack.pop_back();
-        Image::computeImage(l);
+        DirectionField::computeImage(l);
     }
     glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
     glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)

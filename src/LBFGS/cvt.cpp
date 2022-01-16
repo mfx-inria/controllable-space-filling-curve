@@ -1,5 +1,7 @@
 #include "LBFGS/cvt.hpp"
 #include "LBFGS.h"
+#include "graphics/DirectionField.h"
+
 #include <set>
 #include <iostream>
 #include <fstream>
@@ -302,7 +304,7 @@ void SegmentCVT::construct_voro(const Eigen::VectorXd &x, VD *vd) {
 
     // Compute needles
     std::vector<Vec2> needles(N, Vec2(0., 0.));
-    double multArea = .5 * (Image::_imgWidth * Image::_imgHeight) / (Globals::_SVGSize.x * Globals::_SVGSize.y);
+    double multArea = .5 * (DirectionField::_imgWidth * DirectionField::_imgHeight) / (Globals::_SVGSize.x * Globals::_SVGSize.y);
     for(const VD::cell_type &vd_c : vd->cells()) {
         uint ind = vd_c.source_index();
         if(ind < 4) continue; // it is one of the four cells added
@@ -330,7 +332,7 @@ void SegmentCVT::construct_voro(const Eigen::VectorXd &x, VD *vd) {
             for(const ClipperLib::IntPoint &p : P0) P.emplace_back(p.X / _scale + _mid.x, p.Y / _scale + _mid.y);
             P.push_back(P[0]);
             for(int i = 1; i < n; ++i) {
-                needles[ind] += Image::getVecUnder(P[i], P[i-1], _layerIndex);
+                needles[ind] += DirectionField::getVecUnder(P[i], P[i-1], _layerIndex);
                 area += (P[i-1].x - P[i].x) * (P[i].y + P[i-1].y);
             }
         }
@@ -765,7 +767,7 @@ void Smoother::construct_voro(const Eigen::VectorXd &x) {
 
 inline double Smoother::vectorfieldEnergy(const Eigen::VectorXd &x, std::vector<double> &grad, double &div, int j, int k, std::vector<Vec2> &P) {
     Vec2 V(0., 0.), vecAB(x(2*k)-x(2*j), x(2*k+1)-x(2*j+1));
-    for(int i = 1; i < P.size(); ++i) V += Image::getVecUnder(P[i], P[i-1], _layerIndex);
+    for(int i = 1; i < P.size(); ++i) V += DirectionField::getVecUnder(P[i], P[i-1], _layerIndex);
     double area = glm::length(V);
     if(area < 1e-5) return 0.;
     div += area;

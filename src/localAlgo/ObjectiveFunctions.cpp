@@ -3,6 +3,7 @@
 //
 
 #include "localAlgo/ObjectiveFunctions.h"
+#include "graphics/DirectionField.h"
 
 #include <algorithm>
 
@@ -199,10 +200,10 @@ void ObjectiveFunctions::createEdgeVec(const glm::vec2 &a, const glm::vec2 &b, f
     vecAB *= _segCellRadius / glm::length(vecAB);
     std::swap(vecAB.x, vecAB.y);
     vecAB.y = -vecAB.y;
-    glm::vec2 V = Image::getVecUnder(a - vecAB, b - vecAB, _layerIndex);
-    V += Image::getVecUnder(b - vecAB, b + vecAB, _layerIndex);
-    V += Image::getVecUnder(b + vecAB, a + vecAB, _layerIndex);
-    V += Image::getVecUnder(a + vecAB, a - vecAB, _layerIndex);
+    glm::vec2 V = DirectionField::getVecUnder(a - vecAB, b - vecAB, _layerIndex);
+    V += DirectionField::getVecUnder(b - vecAB, b + vecAB, _layerIndex);
+    V += DirectionField::getVecUnder(b + vecAB, a + vecAB, _layerIndex);
+    V += DirectionField::getVecUnder(a + vecAB, a - vecAB, _layerIndex);
     float lV = glm::length(V);
     if(lV < 1e-5f) return;
 
