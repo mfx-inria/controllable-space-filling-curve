@@ -8,16 +8,15 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <future>
 #include <filesystem>
 
 void getImageSize(const std::string &fileName, float &width, float &heihgt) {
-    struct NSVGimage* image;
-    image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
-    if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
+	struct NSVGimage* image;
+	image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
+	if(image == nullptr) THROW_ERROR("can't parse input svg file: " + fileName);
 	width = image->width * .26458; // pixel to mm (pixel is 1/96 inch = .26458mm)
 	heihgt = image->height * .26458;
-    nsvgDelete(image);
+	nsvgDelete(image);
 }
 
 int main(int argc, char** argv) {
@@ -28,7 +27,7 @@ int main(int argc, char** argv) {
 	}
 	std::filesystem::path path(argv[1]);
 	std::ifstream ifs(path);
-	if(!ifs) throw std::runtime_error("can't read inpute file: " + path.string());
+	if(!ifs) THROW_ERROR("can't read inpute file: " + path.string());
 	std::string fileName = "no svg path given";
 	int layerNb = 1;
 	while(ifs) {
@@ -45,12 +44,12 @@ int main(int argc, char** argv) {
 
 	// Init variables
 	getImageSize(str_format(fileName, 0), Globals::_SVGSize.x, Globals::_SVGSize.y);
-    Globals::initVariables(layerNb);
+	Globals::initVariables(layerNb);
 
 	// Start windows and process
 	GeneticAlgorithm ga;
-    Window hm(argc, argv, &ga);
-	auto t = std::async(&GeneticAlgorithm::process, &ga, fileName, layerNb);
+	Window hm(argc, argv, &ga);
+	auto t = std::thread(&GeneticAlgorithm::process, &ga, fileName, layerNb);
 	hm.start();
-    return 0;
+	return 0;
 }

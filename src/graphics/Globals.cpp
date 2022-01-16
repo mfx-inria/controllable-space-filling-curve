@@ -3,11 +3,10 @@
 //
 
 #include "graphics/Globals.h"
+#include "graphics/Window.h"
 
 #define GL_GLEXT_PROTOTYPES
-#include <GL/glut.h>
-
-#include "graphics/Window.h"
+#include <GL/freeglut.h>
 
 #include <queue>
 #include <iostream>

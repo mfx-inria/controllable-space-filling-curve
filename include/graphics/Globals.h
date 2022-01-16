@@ -12,6 +12,14 @@
 
 typedef unsigned int uint;
 
+struct CSFCerror : public std::exception {
+	const std::string m_msg;
+	CSFCerror(const std::string &msg, const std::string &file, int line):
+		m_msg(msg + "\n\tat " + file + ":" + std::to_string(line)) {}
+	const char* what() const throw() { return m_msg.c_str(); }
+};
+#define THROW_ERROR(msg) throw CSFCerror((msg), __FILE__, __LINE__)
+
 enum { GREY,        BLUE,      RED,           GREEN,         YELLOW,       CYAN,        BLACK   };
 enum OBJECTIVE { ANISOTROPY,  ISOTROPY,  VECTOR_FIELD,  ORTHO_VECTOR,  VECTOR_ZONE,  ORTHO_ZONE,  NOTHING };
 const std::vector<glm::vec3> COLORS = {
@@ -144,6 +152,13 @@ std::string str_format(const std::string &s, Args ...args) {
 	auto buf = std::make_unique<char[]>(size);
 	std::snprintf(buf.get(), size, s.c_str(), args...);
 	return std::string(buf.get(), buf.get()+size-1);
+}
+
+namespace glm {
+	template <typename T>
+	inline T length2(const glm::vec<2, T> &v) { return dot(v, v); }
+	template <typename T>
+	inline T distance2(const glm::vec<2, T> &u, const glm::vec<2, T> &v) { return length2(v-u); }
 }
 
 #endif //HAMILTON_GLOBALS_H

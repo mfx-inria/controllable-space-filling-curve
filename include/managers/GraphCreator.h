@@ -19,7 +19,7 @@ public:
 private:
     static void                 remove2coPoints(Shape &, Graph &);
     static void                 getShapeFromSVG(const std::string &, std::vector<Shape> &);
-    static std::vector<std::vector<Shape>> fuseShapes(std::vector<Shape> &);
+    static std::vector<std::vector<Shape>> fuseShapes(std::vector<Shape> &, float);
 };
 
 #endif //HAMILTON_GRAPHCREATOR_H

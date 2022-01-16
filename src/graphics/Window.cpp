@@ -5,7 +5,7 @@
 
 #include "graphics/Window.h"
 
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <iostream>
 
 const float zoom_step = 1.1f;

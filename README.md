@@ -3,8 +3,14 @@
 Before compiling the code you need some libraries:
 * Boost
 * OpenGL
-* GLUT
+* FreeGLUT
+* GLM
 * Eigen3
+
+If you are using a Debian distribution you can install these libraries using
+```bash
+sudo apt install libboost-dev libgl-dev freeglut3-dev libglm-dev libeigen3-dev
+```
 
 Once these libraries are installed, you can compile the code using
 ```bash

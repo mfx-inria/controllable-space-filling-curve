@@ -54,16 +54,10 @@ bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
 	return false;
 }
 
-struct vec2Comp {
-	bool operator()(const glm::vec2 &a, const glm::vec2 &b) const {
-		if(a.x < b.x) return true;
-		return a.x == b.x && a.y < b.y;
-	}
-};
-
-std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>> &fusedShapes) {
+std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>> &fusedShapes, float eps) {
 	std::vector<std::vector<Shape>> strokeZones;
 	strokeZones.reserve(fusedShapes.size());
+	const float eps2 = eps*eps;
 	for(const std::vector<Shape> &zones : fusedShapes) {
 		// Reorder to have consecutive stroke colors
 		std::vector<int> perm(zones.size());
@@ -78,31 +72,22 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 			while(Z1 < perm.size() && zones[perm[Z1]]._printColor == zones[perm[Z0]]._printColor) ++ Z1;
 
 			// Create graph
-			std::map<glm::vec2, int, vec2Comp> map;
+			const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
+			std::map<glm::vec2, int, decltype(vec2Comp)> map(vec2Comp);
 			Graph graph;
 			while(Z0 < Z1) {
 				const Shape &zone = zones[perm[Z0++]];
-				int prev = -1;
-				for(const glm::vec2 &p : zone._points) {
-					std::map<glm::vec2, int>::iterator it = map.lower_bound(p);
-					int idx;
-					if(it != map.end() && it->first == p) idx = it->second;
-					else {
-						idx = graph._points.size();
-						graph._points.emplace_back(p);
-						graph._originalLinks.emplace_back();
-						map.emplace_hint(it, p, idx);
-					}
-					if(prev >= 0) graph._originalLinks[prev].push_back(idx);
-					prev = idx;
-				}
-				for(const std::vector<glm::vec2> &hole : zone._holes) {
-					prev = -1;
-					for(const glm::vec2 &p : hole) {
+				const auto addCycle = [&](const std::vector<glm::vec2> &cycle) {
+					int prev = -1;
+					for(const glm::vec2 &p : cycle) {
 						std::map<glm::vec2, int>::iterator it = map.lower_bound(p);
-						int idx;
-						if(it != map.end() && it->first == p) idx = it->second;
-						else {
+						int idx=-1;
+						float xmin = p.x-eps, xmax = p.x+eps;
+						for(auto it2 = it; it2 != map.end() && it2->first.x <= xmax; ++it2)
+							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
+						if(idx == -1) for(auto it2 = it; it2 != map.begin() && (--it2)->first.x >= xmin;)
+							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
+						if(idx == -1) {
 							idx = graph._points.size();
 							graph._points.emplace_back(p);
 							graph._originalLinks.emplace_back();
@@ -111,7 +96,9 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 						if(prev >= 0) graph._originalLinks[prev].push_back(idx);
 						prev = idx;
 					}
-				}
+				};
+				addCycle(zone._points);
+				for(const std::vector<glm::vec2> &hole : zone._holes) addCycle(hole);
 			}
 
 			// update links
@@ -131,15 +118,16 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 			}
 
 			// Create pathes
-			std::vector<bool> seen(graph._points.size(), false);
+			std::vector<bool> toSee(graph._points.size(), true);
 			std::vector<std::vector<glm::vec2>> holes;
 			size_t start = strokeZones.back().size();
-			for(int i = 0; i < seen.size(); ++i) if(!seen[i] && !graph._originalLinks[i].empty()) {
+			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !graph._originalLinks[i].empty()) {
 					std::vector<glm::vec2> path;
 					int j = i;
 					do {
-						seen[j] = true;
+						toSee[j] = false;
 						path.push_back(graph._points[j]);
+						if(graph._originalLinks[j].size() != 1) THROW_ERROR("Failed to merge color zones");
 						j = graph._originalLinks[j][0];
 					} while(j != i);
 					path.push_back(path[0]);
@@ -172,6 +160,12 @@ std::vector<std::vector<Shape>> mergeStroke(const std::vector<std::vector<Shape>
 	return strokeZones;
 }
 
+float getDiag(const std::vector<Shape> &shapes) {
+	Box<float> box;
+	for(const Shape &s : shapes) for(const glm::vec2 &p : s._points) box.update(p);
+	return box.diag();
+}
+
 // Create Graph from an SVG file.
 void GraphCreator::graphFromSvg(const std::string &fileName,
 								std::vector<Shape> &borders,
@@ -182,9 +176,9 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 {
 	graphs.clear();
 	getShapeFromSVG(fileName, borders);
-	fusedShapes = fuseShapes(borders);
-	//strokeZones = mergeStroke(fusedShapes);
-	strokeZones = fusedShapes;
+	const float eps = 1e-5f * getDiag(borders);
+	fusedShapes = fuseShapes(borders, eps);
+	strokeZones = mergeStroke(fusedShapes, eps);
 
 	// Compute triangulations
 	for(std::vector<Shape> &zones : fusedShapes)
@@ -251,9 +245,7 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 bool isNear(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
 	for(int i = 1; i < cycle.size(); ++i) {
 		const glm::vec2 v = cycle[i-1] - cycle[i];
-		const float len2 = glm::dot(v, v);
-		const glm::vec2 diff = cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/len2, 0.f, 1.f) - p;
-		if(glm::dot(diff, diff) < eps2) return true;
+		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
 	}
 	return false;
 }
@@ -265,15 +257,12 @@ bool isNear(const Shape &shape, const glm::vec2 &p, float eps2=1e-10f) {
 	return false;
 }
 
-std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &borders) {
+std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &borders, float eps) {
 	// Make black shapes first
 	int B = 0;
 	for(int i = 0; i < borders.size(); ++i)
 		if(borders[i]._objcetive == NOTHING)
 			std::swap(borders[B++], borders[i]);
-	Box<float> box;
-	for(const Shape &s : borders) for(const glm::vec2 &p : s._points) box.update(p);
-	const float eps = 1e-5f * box.diag();
 
 	// Fuse black shapes with inner shapes
 	std::vector<std::vector<Shape>> fusedShapes(B);
