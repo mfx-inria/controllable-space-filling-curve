@@ -49,14 +49,16 @@ float Globals::polygonArea(const std::vector<glm::vec2> &points) {
 bool Globals::isInPoly(const std::vector<glm::vec2> &points, const glm::vec2 &point) {
 	bool inside = false;
 	for (int i = 1; i < points.size(); i++) {
-		if(points[i-1].y == points[i].y) continue;
+		float diff = points[i].y - points[i-1].y;
+		if(!diff) continue;
 		if(points[i].y == point.y) {
-			if(points[i].x > point.x && points[i].y < points[i-1].y) inside = !inside;
+			if(points[i].x > point.x && diff < 0.) inside = !inside;
 		} else if(points[i-1].y == point.y) {
-			if(points[i-1].x > point.x && points[i].y > points[i-1].y) inside = !inside;
+			if(points[i-1].x > point.x && diff > 0.) inside = !inside;
 		} else if((points[i].y > point.y) != (points[i-1].y > point.y)) {
-			float x = points[i].x + (points[i-1].x - points[i].x) * (point.y - points[i].y) / (points[i-1].y - points[i].y);
-			if(x > point.x) inside = !inside;
+			float d = (points[i].x - point.x) * diff + (points[i].x - points[i-1].x) * (point.y - points[i].y);
+			if(diff > 0) { if(d > 0) inside = !inside; }
+			else { if(d < 0) inside = !inside; }
 		}
 	}
 
@@ -232,9 +234,9 @@ void Image::initVectorField(const std::vector<std::vector<Shape>> &zones, const 
 	};
 	bool anyVector = false;
 	for(const std::vector<Shape> &ss : zones)
-		for(const Shape &shape : ss) if(IS_VECTOR(shape._fillColor)) {
+		for(const Shape &shape : ss) if(IS_VECTOR(shape._objcetive)) {
 				anyVector = true;
-				if(ADD_BORDER(shape._fillColor))
+				if(ADD_BORDER(shape._objcetive))
 					addShapeSegments(shape);
 			}
 	if(!anyVector) {
@@ -433,8 +435,8 @@ void Image::computeImage(int layer) {
 	gluOrtho2D(0.f, Globals::_SVGSize.x, 0.f, Globals::_SVGSize.y);
 	glBegin(GL_TRIANGLES);
 	for(const std::vector<Shape> &zones : *_tmpZones[layer]) {
-		for(const Shape &zone : zones) if(IS_VECTOR(zone._fillColor)) {
-				if(IS_ORTHO(zone._fillColor)) glColor3f(1.f, 0.f, 0.f);
+		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
+				if(IS_ORTHO(zone._objcetive)) glColor3f(1.f, 0.f, 0.f);
 				else glColor3f(0.f, 1.f, 0.f);
 				for(uint i : zone._triangles[0])
 					glVertex2f(zone._points[i].x, zone._points[i].y);
@@ -497,13 +499,11 @@ inline float Image::Segment::normal_angle(const glm::vec2 &p) const {
 
 // is p inside of _points
 bool Shape::isInside(const glm::vec2 &p) const {
-	if(Globals::isInPoly(_points, p)) {
-		for(const std::vector<glm::vec2> &hole : _holes)
-			if(Globals::isInPoly(hole, p))
-				return false;
-		return true;
-	}
-	return false;
+	if(!Globals::isInPoly(_points, p)) return false;
+	for(const std::vector<glm::vec2> &hole : _holes)
+		if(Globals::isInPoly(hole, p))
+			return false;
+	return true;
 }
 
 

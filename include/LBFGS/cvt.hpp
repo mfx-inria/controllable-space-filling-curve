@@ -15,25 +15,6 @@ typedef glm::vec<2, double> Vec2;
 typedef std::pair<Vec2, Vec2> Segment;
 typedef boost::polygon::voronoi_diagram<double> VD;
 
-struct Box {
-	double x0 = std::numeric_limits<double>::max();
-	double x1 = std::numeric_limits<double>::lowest();
-	double y0 = std::numeric_limits<double>::max();
-	double y1 = std::numeric_limits<double>::lowest();
-
-	template <typename Scalar>
-	inline void update(const glm::vec<2, Scalar> &v) {
-		x0 = std::min(x0, (double) v.x);
-		x1 = std::max(x1, (double) v.x);
-		y0 = std::min(y0, (double) v.y);
-		y1 = std::max(y1, (double) v.y);
-	}
-	inline double W() const { return x1-x0; } 
-	inline double H() const { return y1-y0; }
-	inline Vec2 min() const { return {x0, y0}; }
-	inline Vec2 max() const { return {x1, y1}; }
-};
-
 
 struct self_intersection_error : public std::exception {
 	const std::string m_msg;
@@ -56,7 +37,7 @@ private:
     const std::vector<glm::vec2> *_outer;
     const std::vector<std::vector<glm::vec2>> *_inners;
 	ClipperLib::Paths _border;
-    Box _border_box;
+    Box<double> _border_box;
     double _scale;
 	Vec2 _mid;
     std::vector<Vec2> _points;
@@ -79,7 +60,7 @@ class SegmentCVT
 private:
     const Shape *_boundary;
 	ClipperLib::Paths _border;
-    Box _border_box;
+    Box<double> _border_box;
     double _scale;
 	Vec2 _mid;
     std::vector<Vec2> _points;
@@ -102,7 +83,7 @@ private:
 
 
 public:
-    SegmentCVT(const Shape *boundary, const Box &box, int layerIndex);
+    SegmentCVT(const Shape *boundary, const Box<double> &box, int layerIndex);
 
     double operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad);
 
@@ -122,7 +103,7 @@ private:
     const std::vector<Shape> *_zones, *_strokeZones;
 	std::vector<ClipperLib::Paths> _borders;
 	std::vector<std::vector<std::tuple<int, double, double>>> _paths;
-	Box _border_box;
+	Box<double> _border_box;
 	std::vector<std::vector<Segment>> _segments;
 	int _layerIndex;
 

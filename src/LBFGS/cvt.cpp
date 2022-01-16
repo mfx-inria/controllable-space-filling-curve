@@ -256,7 +256,7 @@ void PointCVT::updateLink(const Eigen::VectorXd &x,
 //
 //////////////////
 
-SegmentCVT::SegmentCVT(const Shape *boundary, const Box &box, int layerIndex):
+SegmentCVT::SegmentCVT(const Shape *boundary, const Box<double> &box, int layerIndex):
         _border_box(box), _boundary(boundary), _layerIndex(layerIndex) {
     _border.resize(1 + _boundary->_holes.size());
     _border[0].resize(_boundary->_points.size()-1);
@@ -792,7 +792,7 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
     double f = 0.;
     std::vector<bool> prev_inside(N, false);
 
-    for(const Shape &zone : *_zones) if(IS_ISOTROPY(zone._fillColor)) {
+    for(const Shape &zone : *_zones) if(IS_ISOTROPY(zone._objcetive)) {
             double coeffZ = coeff * zone._area;
 
             // ANGLE x LENGTH x INDEX
@@ -825,10 +825,10 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
             }
 
             if(distrib.empty()) {
-                if(zone._fillColor == ISOTROPY) f += coeffZ * M_PI*M_PI*M_PI/4.;
+                if(zone._objcetive == ISOTROPY) f += coeffZ * M_PI*M_PI*M_PI/4.;
                 continue;
             }
-            if(zone._fillColor == ANISOTROPY) f += coeffZ * M_PI*M_PI*M_PI/4.;
+            if(zone._objcetive == ANISOTROPY) f += coeffZ * M_PI*M_PI*M_PI/4.;
             else coeffZ *= std::max(1., .0123 * zone._area / _boundary->_area * N);
 
             alpha /= L;
@@ -843,7 +843,7 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
                 double u1 = pi_L*t + alpha - angle;
                 double u02 = u0*u0;
                 double u12 = u1*u1;
-                if(zone._fillColor == ISOTROPY) f += coeffZ * (u1*u12 - u0*u02);
+                if(zone._objcetive == ISOTROPY) f += coeffZ * (u1*u12 - u0*u02);
                 else f -= coeffZ * (u1*u12 - u0*u02);
 
                 int j = (i+1) % N;
@@ -852,7 +852,7 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
                 double diff2 = 3. * coeffZ * (u12 - u02) / (vx*vx + vy*vy);
                 double dx = diff2 * vy;
                 double dy = - diff2 * vx;
-                if(zone._fillColor == ANISOTROPY) {
+                if(zone._objcetive == ANISOTROPY) {
                     dx = -dx;
                     dy = -dy;
                 }

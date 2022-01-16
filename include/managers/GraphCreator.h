@@ -7,10 +7,7 @@
 
 #include "graphics/Globals.h"
 
-#include <string>
-
-class GraphCreator
-{
+class GraphCreator {
 public:
     static void graphFromSvg(const std::string &,
                              std::vector<Shape> &,
@@ -22,7 +19,6 @@ public:
 private:
     static void                 remove2coPoints(Shape &, Graph &);
     static void                 getShapeFromSVG(const std::string &, std::vector<Shape> &);
-    static int                  getColor(unsigned int);
     static std::vector<std::vector<Shape>> fuseShapes(std::vector<Shape> &);
 };
 

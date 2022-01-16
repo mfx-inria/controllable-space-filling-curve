@@ -159,8 +159,8 @@ void Window::displayCycle() {
     glBegin(GL_TRIANGLES);
     for(const LocalOperator &op : layer._operators) {
         for(const Shape &zone : (_showStrokeColor ? op.getStrokeZones() : op.getZones())) {
-            if(_showStrokeColor) COLOR_INT(zone._strokeColor);
-            else glColor3f(COLORS[zone._fillColor].x, COLORS[zone._fillColor].y, COLORS[zone._fillColor].z);
+            if(_showStrokeColor) COLOR_INT(zone._printColor);
+            else glColor3f(COLORS[zone._objcetive].x, COLORS[zone._objcetive].y, COLORS[zone._objcetive].z);
             for(uint i : zone._triangles[0]) drawVertex(zone._points[i]);
             glColor3f(1.f, 1.f, 1.f);
             for(uint i = 0; i < zone._holes.size(); ++i)

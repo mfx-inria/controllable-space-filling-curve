@@ -29,9 +29,9 @@ void ObjectiveFunctions::computeData() {
     _vecScore = 0.f;
     _vecArea = 0.f;
     for(int i = 0; i < _zones.size(); ++i) {
-        if(IS_ISOTROPY(_zones[i]._fillColor))
+        if(IS_ISOTROPY(_zones[i]._objcetive))
             _distribs[i].assign(_nSamples, 0.f);
-        else if(IS_VECTOR(_zones[i]._fillColor))
+        else if(IS_VECTOR(_zones[i]._objcetive))
             _vecArea += _zones[i]._area;
     }
     _nCrosses = 0;
@@ -69,9 +69,9 @@ void ObjectiveFunctions::calculateScore() {
             std::vector<float> ts;
             Globals::getInter(_points[i], _points[j], _zones[k], ts);
             if(ts.empty()) {
-                if(IS_VECTOR(_zones[k]._fillColor))
+                if(IS_VECTOR(_zones[k]._objcetive))
                     createEdgeVec(_points[i], _points[j], _segments[i].back().vecW, _segments[i].back().vecS);
-                else if(IS_ISOTROPY(_zones[k]._fillColor))
+                else if(IS_ISOTROPY(_zones[k]._objcetive))
                     _segments[i].back().iso.push_back(createEdgeIso(k, _points[j] - _points[i]));
                 continue;
             }
@@ -82,11 +82,11 @@ void ObjectiveFunctions::calculateScore() {
             while(true) {
                 std::sort(ts.begin(), ts.end());
                 if(_zone[j] == l) ts.push_back(1.f);
-                for(float t : ts) tss.emplace_back(t, _zones[l]._strokeColor);
-                if(IS_VECTOR(_zones[l]._fillColor))
+                for(float t : ts) tss.emplace_back(t, _zones[l]._printColor);
+                if(IS_VECTOR(_zones[l]._objcetive))
                     for(int m = 0; m < ts.size(); m += 2)
                         createEdgeVec(_points[i]+ts[m]*v, _points[i]+ts[m+1]*v, _segments[i].back().vecW, _segments[i].back().vecS);
-                else if(IS_ISOTROPY(_zones[l]._fillColor)) {
+                else if(IS_ISOTROPY(_zones[l]._objcetive)) {
                     float t = 0;
                     for(int m = 0; m < ts.size(); m += 2) t += ts[m+1] - ts[m];
                     _segments[i].back().iso.push_back(createEdgeIso(l, t*v));
@@ -95,7 +95,7 @@ void ObjectiveFunctions::calculateScore() {
                 do {
                     l = (l+1) % _zones.size();
                     if(l == k) break;
-                    if(_zones[l]._fillColor != NOTHING)
+                    if(_zones[l]._objcetive != NOTHING)
                         Globals::getInter(_points[i], _points[j], _zones[l], ts);
                 } while(ts.empty());
                 if(l == k) break;
@@ -149,9 +149,9 @@ void ObjectiveFunctions::rmSegment(int i, int j) {
 float ObjectiveFunctions::getMeanScore() {
     float isoScore = 0.f;
     for(int i = 0; i < _zones.size(); ++i) {
-        if(_zones[i]._fillColor == ANISOTROPY)
+        if(_zones[i]._objcetive == ANISOTROPY)
             isoScore += _zones[i]._area * (1.f - getWassersteinDistance(i));
-        else if(_zones[i]._fillColor == ISOTROPY)
+        else if(_zones[i]._objcetive == ISOTROPY)
             isoScore += _zones[i]._area * getWassersteinDistance(i);
     }
     float vecScore = _vecArea * (_vecWeight <= 0.f ? .5f : _vecScore / _vecWeight);
@@ -317,7 +317,7 @@ float ObjectiveFunctions::getArea() const {
 }
 
 int ObjectiveFunctions::getStrokeColor(int i) const {
-    return _zones[_zone[i]]._strokeColor;
+    return _zones[_zone[i]]._printColor;
 }
 
 const Shape& ObjectiveFunctions::getBorder() const

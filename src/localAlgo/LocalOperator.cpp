@@ -192,7 +192,7 @@ void LocalOperator::optimize()
         glm::vec2 v(p.x, p.y);
         int col = 0;
         for(const Shape &zone : _strokeZones) if (zone.isInside(v)) {
-                col = zone._strokeColor;
+                col = zone._printColor;
                 break;
             }
 
