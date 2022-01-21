@@ -191,22 +191,18 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 	DirectionField::initVectorField(objZones, shapes, layerIndex);
 
 	std::uniform_real_distribution<> dis(0.0, 1.0);
-	if (Globals::_isRandom)
-		Globals::_seed = Globals::_rd();
-	std::mt19937  gen = std::mt19937(Globals::_seed);
+	std::mt19937 gen(Globals::_seed + layerIndex);
 	for (int i = 0; i < shapes.size(); ++i) {
-		float air = 1.66f; // ideal is 1.3
-		// float air = 1.05f; // ideal is 1.3
 		Box<double> box;
 		for (const auto &point : shapes[i]._points) box.update(point);
 		std::vector<glm::vec2> toAdd;
-		for (float x = box.x0; x <= box.x1; x += air) {
+		for (float x = box.x0; x <= box.x1; x += Globals::_d) {
 			int j = 1;
-			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * air) {
+			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
 				glm::vec2 point(x, y);
-				if((++j)&1) point.x -= (air / 2.f);
-				point.x += static_cast<float>(dis(gen)) * air / 20.f;
-				point.y += static_cast<float>(dis(gen)) * air / 20.f;
+				if((++j)&1) point.x -= (Globals::_d / 2.f);
+				point.x += static_cast<float>(dis(gen)) * Globals::_d / 20.f;
+				point.y += static_cast<float>(dis(gen)) * Globals::_d / 20.f;
 				if(shapes[i].isInside(point)) toAdd.push_back(point);
 			}
 		}

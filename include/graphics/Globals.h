@@ -40,22 +40,22 @@ class Shape;
 
 class Globals {
 public:
+	// Printer parameters
 	inline static double        _frameRayIn = 1.75 / 2.0;
-	inline static double        _outRPrismeWidth = 0.4; // in mm == Buze Diametre out
-
-	inline static	 bool          _isRandom = true;
-	inline static	 std::random_device _rd;
-	inline static	 unsigned int  _seed = 5;
 	inline static double        _frameInArea;
-	inline static glm::vec2     _SVGSize;
-
-
+	inline static double        _outRPrismeWidth = 0.4; // in mm == Buze Diametre out
 	inline static double        _outRPrismeHeight = 0.2; // in mm == outPutHeight
 	inline static double        _extrusionHeight = 0;
-	inline static unsigned int  _nbThread = std::thread::hardware_concurrency();
-	inline static double        _millimeter = 1.0; // in mm
 	inline static double        _buzeVolume = 6.1; // in mm3
 	inline static double        _lengthToClear; // in frame in length
+
+	// Parameters of randomness and multithreading
+	inline static unsigned int  _seed = 5;
+	inline static unsigned int  _nbThread = std::thread::hardware_concurrency();
+
+	// Size of SVG file
+	inline static glm::vec2     _SVGSize;
+	inline static float			_d = 1.2; // spacing for the graph construction
 
 public:
 	static void         initVariables(int layerNb);
@@ -64,8 +64,6 @@ public:
 	static bool         intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
 	static bool         intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, float &);
 	static void         getInter(const glm::vec2 &, const glm::vec2 &, const Shape &, std::vector<float> &);
-	static glm::vec2    getCenter(const std::vector<glm::vec2> &);
-	static float        getDist(const glm::vec3 &, const glm::vec3 &);
 };
 
 class Shape {

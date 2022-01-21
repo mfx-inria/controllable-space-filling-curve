@@ -132,8 +132,6 @@ void LocalOperator::computeIndex(int start = 0, int end = 0) {
 }
 
 void LocalOperator::startShuffling(int multiplier, int champ) {
-    if (Globals::_isRandom)
-        Globals::_seed = Globals::_rd();
     _gen = std::default_random_engine(Globals::_seed + champ);
     computeIndex();
     std::vector<int> order(_points.size());

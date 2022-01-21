@@ -87,9 +87,8 @@ void triangulatePoly(const vector<vec2ll> &path, vector<uint> &indices) {
 	};
 	map<Edge*, Edge*, decltype(compE)> BST(compE);
 	const auto right_edge = [&](uint j) {
-		Edge *e = new Edge(j, j);
-		auto right = BST.upper_bound(e);
-		delete e;
+		Edge e(j, j);
+		auto right = BST.upper_bound(&e);
 		return right;
 	};
 	for(uint j : order) {

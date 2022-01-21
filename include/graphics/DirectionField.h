@@ -28,7 +28,6 @@ public:
 
 public:
 	static void			init(int);
-	static void         resize(int);
 	static void         initVectorField(const std::vector<std::vector<Shape>> &, const std::vector<Shape> &, int);
 	static void         computeImage(int);
 	static glm::vec2    getVecAtPos(const glm::vec2 &, int);

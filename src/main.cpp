@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 		std::istringstream iss(line);
 		if(iss >> var && iss >> val) {
 			if(var == "path") fileName = path.parent_path().append(val);
-			else if(var == "d") ;
+			else if(var == "d") Globals::_d = std::stof(val);
 			else if(var == "layerNb") layerNb = std::stoi(val);
 			else if(var == "seed") Globals::_seed = std::stoul(val);
 		}

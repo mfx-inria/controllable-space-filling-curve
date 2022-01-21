@@ -38,6 +38,10 @@ void Printer::printToGcode(const std::vector<Layer> &layers, const std::string &
     output.close();
 }
 
+float pointDist(const glm::vec3 &a, const glm::vec3 &b) {
+	return glm::distance(glm::vec2(a), glm::vec2(b));
+}
+
 void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, int layerMult, bool doVary)
 {
     initSpeedMultiplier(layers.front()._operators.front(), doVary);
@@ -114,14 +118,14 @@ std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::vec
         double X = 0.1f;
         double fnom = 200.0;
         E = (points[(j + 1) % nb].z * Globals::_outRPrismeHeight) / Globals::_frameInArea;
-        F = 60.0 * (Globals::getDist(points[j], points[(j + 1) % nb]) / (E / X));
+        F = 60.0 * pointDist(points[j], points[(j + 1) % nb]) / (E / X);
         F = fnom * pow(F / fnom, 3.0);
         F *= 5.0;
         F = std::min(500.0, std::max(10.0, F));
     }
     else
     {
-        E = Globals::getDist(points[j], points[(j + 1) % nb]) * extrusionValue;
+        E = pointDist(points[j], points[(j + 1) % nb]) * extrusionValue;
     }
     return {F, E};
 }
@@ -133,7 +137,7 @@ float Printer::getExtrusionV(float area, const std::vector<glm::vec3> &points)
     float totalDist = 0;
     int nb = points.size();
     for (int i = 0; i < nb; i++)
-        totalDist += Globals::getDist(points[i], points[(i + 1) % nb]);
+        totalDist += pointDist(points[i], points[(i + 1) % nb]);
     std::cout << "total Dist = " << totalDist << std::endl;
     float lengthFrameIn = volume / Globals::_frameInArea;
     return (lengthFrameIn / totalDist);

@@ -25,7 +25,7 @@ void Globals::initVariables(int layerNb) {
 	// calculate frame in transversal area
 	_frameInArea = M_PI * _frameRayIn * _frameRayIn;
 	// calculate Extrusion value based on the nozzle
-	_extrusionHeight = (_millimeter * _outRPrismeHeight * _outRPrismeWidth) / _frameInArea;
+	_extrusionHeight = (_outRPrismeHeight * _outRPrismeWidth) / _frameInArea;
 	// calculate the length of frame in to push the nozzle volume
 	_lengthToClear = _buzeVolume / _frameInArea;
 	// Update DirectionFields
@@ -60,20 +60,6 @@ bool Globals::isInPoly(const std::vector<glm::vec2> &points, const glm::vec2 &po
 	return inside;
 }
 
-bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec2 &d) {
-	glm::vec2 v = c - a;
-	glm::vec2 w = d - b;
-	float t = (b.x - a.x) * w.y - (b.y - a.y) * w.x;
-	t /= v.x * w.y - v.y * w.x;
-	if(t >= 0. && t <= 1.) {
-		float u;
-		if(std::abs(w.x) > std::abs(w.y)) u = (a.x + t*v.x - b.x) / w.x;
-		else u = (a.y + t*v.y - b.y) / w.y;
-		if(u >= 0. && u <= 1.) return true;
-	}
-	return false;
-}
-
 bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec2 &d, float &t) {
 	glm::vec2 v = c - a;
 	glm::vec2 w = d - b;
@@ -88,6 +74,11 @@ bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 
 	return false;
 }
 
+bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec2 &d) {
+	float t;
+	return intersect(a, b, c, d, t);
+}
+
 void Globals::getInter(const glm::vec2 &a, const glm::vec2 &b, const Shape &shape, std::vector<float> &ts) {
 	float t;
 	for(int i = 1; i < shape._points.size(); ++i)
@@ -98,27 +89,6 @@ void Globals::getInter(const glm::vec2 &a, const glm::vec2 &b, const Shape &shap
 			if(intersect(a, hole[i-1], b, hole[i], t))
 				ts.push_back(t);
 }
-
-// get the centroid of a set of points
-glm::vec2 Globals::getCenter(const std::vector<glm::vec2> &points) {
-	glm::vec2 center(0.f, 0.f);
-	float area = 0.;
-	for(int i = 0; i < points.size(); ++i) {
-		const glm::vec2 &a = points[i], &b = points[(i+1)%points.size()];
-		float dx = b.x - a.x;
-		glm::vec2 s = a+b;
-		area += dx * s.y / 2.;
-		center += dx * (b.y*b + s.y*s + a.y*a) / glm::vec2(6.f, 12.f);
-	}
-	center /= area;
-	return center;
-}
-
-// ignore Z component
-float Globals::getDist(const glm::vec3 &a, const glm::vec3 &b) {
-	return (sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2)));
-}
-
 
 //////////////////
 //

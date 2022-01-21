@@ -10,10 +10,6 @@
 void DirectionField::init(int layerNb) {
 	DirectionField::_imgWidth = std::sqrt((_pixelsWanted * Globals::_SVGSize.x) / Globals::_SVGSize.y);
 	DirectionField::_imgHeight = _pixelsWanted / _imgWidth;
-	DirectionField::resize(layerNb);
-}
-
-void DirectionField::resize(int layerNb) {
 	_vectorField.resize(layerNb);
 	_vectorFieldSum.resize(layerNb);
 	_tmpImages.assign(layerNb, nullptr);
