@@ -240,14 +240,14 @@ void Shape::triangulate() {
 	std::vector<vec2ll> vs;
 	_triangles.resize(_holes.size() + 1);
 	vs.resize(_points.size()-1);
-	for(int i = 0; i < vs.size(); ++i) {
+	for(int i = 0; i < (int) vs.size(); ++i) {
 		vs[i].x = mult * _points[i].x;
 		vs[i].y = mult * _points[i].y;
 	}
 	triangulatePoly(vs, _triangles[0]);
-	for(int i = 0; i < _holes.size(); ++i) {
+	for(int i = 0; i < (int) _holes.size(); ++i) {
 		vs.resize(_holes[i].size()-1);
-		for(int j = 0; j < vs.size(); ++j) {
+		for(int j = 0; j < (int) vs.size(); ++j) {
 			vs[j].x = mult * _holes[i][j].x;
 			vs[j].y = mult * _holes[i][j].y;
 		}

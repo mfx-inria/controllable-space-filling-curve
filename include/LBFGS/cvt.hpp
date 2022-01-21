@@ -55,8 +55,13 @@ public:
 //
 //////////////////
 
-class SegmentCVT
-{
+class SegmentCVT {
+public:
+    SegmentCVT(const Shape *boundary, const Box<double> &box, int layerIndex);
+	Graph optimize(std::vector<glm::vec2> &points);
+
+    double operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad);
+
 private:
     const Shape *_boundary;
 	ClipperLib::Paths _border;
@@ -79,15 +84,6 @@ private:
 
     Graph getGraph(const Eigen::VectorXd &x);
     Graph getGraph(const VD &vd);
-	void saveGraph(const std::string &filename, const Graph &graph);
-
-
-public:
-    SegmentCVT(const Shape *boundary, const Box<double> &box, int layerIndex);
-
-    double operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad);
-
-	Graph optimize(std::vector<glm::vec2> &points);
 };
 
 //////////////////

@@ -13,8 +13,8 @@ ObjectiveFunctions::ObjectiveFunctions(std::vector<Shape> &&zones, Shape &&borde
 
 void ObjectiveFunctions::computeZone() {
     _zone.resize(_points.size());
-    for(int i = 0; i < _points.size(); ++i) {
-        for(int j = 0; j < _zones.size(); ++j) {
+    for(int i = 0; i < (int) _points.size(); ++i) {
+        for(int j = 0; j < (int) _zones.size(); ++j) {
             if(_zones[j].isInside(_points[i])) {
                 _zone[i] = j;
                 break;
@@ -29,7 +29,7 @@ void ObjectiveFunctions::computeData() {
     _vecWeight = 0.f;
     _vecScore = 0.f;
     _vecArea = 0.f;
-    for(int i = 0; i < _zones.size(); ++i) {
+    for(int i = 0; i < (int) _zones.size(); ++i) {
         if(IS_ISOTROPY(_zones[i]._objcetive))
             _distribs[i].assign(_nSamples, 0.f);
         else if(IS_VECTOR(_zones[i]._objcetive))
@@ -38,7 +38,7 @@ void ObjectiveFunctions::computeData() {
     _nCrosses = 0;
 
     // Add selected edges
-    for(int i = 0; i < _points.size(); ++i)
+    for(int i = 0; i < (int) _points.size(); ++i)
         for(int j : _cLinks[i]) if(i < j)
                 addSegment(i, j);
 
@@ -52,7 +52,7 @@ void ObjectiveFunctions::calculateScore() {
     _segCellRadius = .2f * _border._area / _points.size();
     int nLink = 0;
     float sumLenLink = 0.f;
-    for(int i = 1; i < _points.size(); ++i)
+    for(int i = 1; i < (int) _points.size(); ++i)
         for(int j : _originalLinks[i]) if(j < i) {
                 ++ nLink;
                 sumLenLink += glm::distance(_points[i], _points[j]);
@@ -61,7 +61,7 @@ void ObjectiveFunctions::calculateScore() {
 
     // Compute edges
     _segments.resize(_points.size());
-    for(int i = 0; i < _points.size(); ++i) {
+    for(int i = 0; i < (int) _points.size(); ++i) {
         _segments[i].clear();
         _segments[i].reserve(_originalLinks[i].size());
         int k = _zone[i];
@@ -85,11 +85,11 @@ void ObjectiveFunctions::calculateScore() {
                 if(_zone[j] == l) ts.push_back(1.f);
                 for(float t : ts) tss.emplace_back(t, _zones[l]._printColor);
                 if(IS_VECTOR(_zones[l]._objcetive))
-                    for(int m = 0; m < ts.size(); m += 2)
+                    for(int m = 0; m < (int) ts.size(); m += 2)
                         createEdgeVec(_points[i]+ts[m]*v, _points[i]+ts[m+1]*v, _segments[i].back().vecW, _segments[i].back().vecS);
                 else if(IS_ISOTROPY(_zones[l]._objcetive)) {
                     float t = 0;
-                    for(int m = 0; m < ts.size(); m += 2) t += ts[m+1] - ts[m];
+                    for(int m = 0; m < (int) ts.size(); m += 2) t += ts[m+1] - ts[m];
                     _segments[i].back().iso.push_back(createEdgeIso(l, t*v));
                 }
                 ts.clear();
@@ -102,7 +102,7 @@ void ObjectiveFunctions::calculateScore() {
                 if(l == k) break;
             }
             std::sort(tss.begin(), tss.end());
-            for(l = 2; l < tss.size(); l += 2)
+            for(l = 2; l < (int) tss.size(); l += 2)
                 if(tss[l-1].second != tss[l].second)
                 {
                     if (tss[l-1].second != -1 && tss[l].second != -1)
@@ -121,7 +121,7 @@ void ObjectiveFunctions::calculateScore() {
 
 const ObjectiveFunctions::Segment& ObjectiveFunctions::getSegment(int i, int j) {
     int k = 0;
-    while(k < _originalLinks[i].size() && _originalLinks[i][k] != j) ++k;
+    while(k < (int) _originalLinks[i].size() && _originalLinks[i][k] != j) ++k;
     return _segments[i][k];
 }
 
@@ -149,7 +149,7 @@ void ObjectiveFunctions::rmSegment(int i, int j) {
 
 float ObjectiveFunctions::getMeanScore() {
     float isoScore = 0.f;
-    for(int i = 0; i < _zones.size(); ++i) {
+    for(int i = 0; i < (int) _zones.size(); ++i) {
         if(_zones[i]._objcetive == ANISOTROPY)
             isoScore += _zones[i]._area * (1.f - getWassersteinDistance(i));
         else if(_zones[i]._objcetive == ISOTROPY)

@@ -14,8 +14,8 @@ class Tree
 {
 
 public:
-    bool _needEdge;
     int _nodeIdx;
+    bool _needEdge;
     std::shared_ptr<Tree> _parent;
     std::vector<std::shared_ptr<Tree>> _childrens;
 public:

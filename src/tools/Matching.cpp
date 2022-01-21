@@ -12,7 +12,7 @@
 const bool printFuseStats = false;
 
 Tree::Tree(int nodeIdx, bool needEdge, std::shared_ptr<Tree> parent = nullptr)
-        : _parent(parent), _nodeIdx(nodeIdx), _needEdge(needEdge)
+        : _nodeIdx(nodeIdx), _needEdge(needEdge), _parent(parent)
 { }
 
 bool Tree::operator==(int nodeIdx) const
@@ -74,7 +74,7 @@ Matching::Matching(const Shape &border, Graph &graph) {
             // A = B       A --- B
             //  \ /   ===>  \\ //
             //   T            T
-            for (int i = 1; i < _originalLinks[tmp].size(); i++) {
+            for (int i = 1; i < (int) _originalLinks[tmp].size(); i++) {
                 int a = _originalLinks[tmp][i];
                 for(int j = 0; j < i; ++j) {
                     int b = _originalLinks[tmp][j];
@@ -88,11 +88,11 @@ Matching::Matching(const Shape &border, Graph &graph) {
 
             if (A == -1) {  // (A, B) not found
                 int C = -1, D;
-                //    C             C = new T
-                //  // \\         /   \
-                // B --- D  ==>  B --- D
-                //  \   /         \\ //
-                //    T             T
+                //    C             C = new T //
+                //  // \\         /   \       //
+                // B --- D  ==>  B --- D      //
+                //  \   /         \\ //       //
+                //    T             T         //
                 for (int b : _originalLinks[tmp]) {
                     if(C != -1) break;
                     for (int c : _cLinks[b]) if(!seen.count(c)) {
@@ -137,7 +137,7 @@ Matching::Matching(const Shape &border, Graph &graph) {
 
 void Matching::initUnion() {
     _union = Union(_points.size());
-    for(int i = 0; i < _points.size(); ++i)
+    for(int i = 0; i < (int) _points.size(); ++i)
         for(int j : _cLinks[i])
             _union.merge(i, j);
 }
@@ -170,12 +170,12 @@ std::vector<int> Matching::getPath(int start, int end) {
 void Matching::removeUnused(const Shape &border) {
     std::vector<int> newIndex(_points.size(), -1);
     int newSize = 0;
-    for(int i = 0; i < newIndex.size(); ++i) {
+    for(int i = 0; i < (int) newIndex.size(); ++i) {
         if(_cLinks[i].empty()) {
             for(int j : _originalLinks[i]) if(!_cLinks[j].empty()) {
                 std::vector<int> js = getIdxs(i, j);
                 js.push_back(j);
-                for(int k = 1; k < js.size(); ++k)
+                for(int k = 1; k < (int) js.size(); ++k)
                     for(int l = 0; l < k; ++l)
                         if(std::find(_originalLinks[js[k]].begin(), _originalLinks[js[k]].end(), js[l]) == _originalLinks[js[k]].end()) {
                             bool bad = false;
@@ -189,14 +189,14 @@ void Matching::removeUnused(const Shape &border) {
                                         break;
                                     }
                             if(bad) continue;
-                            for(int m = 1; m < border._points.size(); ++m)
+                            for(int m = 1; m < (int) border._points.size(); ++m)
                                 if(Globals::intersect(_points[js[l]], border._points[m-1], _points[js[k]], border._points[m])) {
                                     bad = true;
                                     break;
                                 }
                             if(bad) continue;
                             for(const std::vector<glm::vec2> &hole : border._holes) {
-                                for(int m = 1; m < hole.size(); ++m)
+                                for(int m = 1; m < (int) hole.size(); ++m)
                                     if(Globals::intersect(_points[js[l]], hole[m-1], _points[js[k]], hole[m])) {
                                         bad = true;
                                         break;
@@ -211,7 +211,7 @@ void Matching::removeUnused(const Shape &border) {
             }
         } else newIndex[i] = newSize++;
     }
-    for(int i = 0; i < newIndex.size(); ++i) {
+    for(int i = 0; i < (int) newIndex.size(); ++i) {
         int k = newIndex[i];
         if(k == -1) continue;
         for(int &j : _cLinks[i]) j = newIndex[j];
@@ -264,11 +264,11 @@ void Matching::fuseIslands() {
                             _nbConnectedPoints += path.size() + path2.size() - 4;
                             removeLink(i, k);
                             removeLink(j, l);
-                            for (int inc = 1; inc < path.size(); ++inc) {
+                            for (int inc = 1; inc < (int) path.size(); ++inc) {
                                 _union.merge(path[inc], path[inc - 1]);
                                 createLink(path[inc], path[inc - 1]);
                             }
-                            for (int inc = 1; inc < path2.size(); ++inc) {
+                            for (int inc = 1; inc < (int) path2.size(); ++inc) {
                                 _union.merge(path2[inc], path2[inc - 1]);
                                 createLink(path2[inc], path2[inc - 1]);
                             }
@@ -327,7 +327,7 @@ void Matching::fuseIslands() {
                 createLink(k+1, o);
                 createLink(i, j);
                 createLink(k, k+1);
-                for(int x = 0; x < _originalLinks[i].size();) {
+                for(int x = 0; x < (int) _originalLinks[i].size();) {
                     int l = _originalLinks[i][x];
                     const glm::vec2 &e = _points[l];
                     if(Globals::intersect(a, b, e, d)) {
@@ -343,7 +343,7 @@ void Matching::fuseIslands() {
                         _originalLinks[l].push_back(k);
                     }
                 }
-                for(int x = 0; x < _originalLinks[j].size();) {
+                for(int x = 0; x < (int) _originalLinks[j].size();) {
                     int l = _originalLinks[j][x];
                     const glm::vec2 &e = _points[l];
                     if(Globals::intersect(c, b, e, d)) {
@@ -385,8 +385,8 @@ void Matching::match()
 		for(const glm::vec2 &p : _points)
 			file << p.x << ' ' << p.y << '\n';
 		size_t ne = 0, nm = 0;
-		for(const auto link : _originalLinks) ne += link.size();
-		for(const auto link : _cLinks) nm += link.size();
+		for(const auto &link : _originalLinks) ne += link.size();
+		for(const auto &link : _cLinks) nm += link.size();
 		ne /= 2; nm /= 2;
 		file << "EDGE " << ne << '\n';
 		for(int i = 0; i < (int) _originalLinks.size(); ++i)
@@ -405,8 +405,8 @@ void Matching::match()
 		for(const glm::vec2 &p : _points)
 			file << p.x << ' ' << p.y << '\n';
 		ne = 0; nm = 0;
-		for(const auto link : _originalLinks) ne += link.size();
-		for(const auto link : _cLinks) nm += link.size();
+		for(const auto &link : _originalLinks) ne += link.size();
+		for(const auto &link : _cLinks) nm += link.size();
 		ne /= 2; nm /= 2;
 		file << "EDGE " << ne << '\n';
 		for(int i = 0; i < (int) _originalLinks.size(); ++i)
@@ -429,7 +429,7 @@ bool Matching::isLinked(const std::vector<int> &links, int node)
 void Matching::switchLink()
 {
     _nbConnectedPoints = 0;
-    for (int i = 0; i < _cLinks.size(); i++)
+    for (int i = 0; i < (int) _cLinks.size(); i++)
     {
         if (_originalLinks[i].size() == 2)
         {
@@ -511,7 +511,7 @@ void Matching::augmentPath(int idx)
             std::cout << "not found" << std::endl;
             found = true;
         }
-        for (int i = 0; i < childs.size() && !found; i++)
+        for (int i = 0; i < (int) childs.size() && !found; i++)
         {
             std::shared_ptr<Tree> child = childs[i];
             idx = child->_nodeIdx;
@@ -528,7 +528,7 @@ void Matching::augmentPath(int idx)
                 childs[i] = node;
                 childs[i]->_childrens.clear();
 
-                for (int k = 0; k < blossomNodes.size(); k++)
+                for (int k = 0; k < (int) blossomNodes.size(); k++)
                 {
                     int bNode = blossomNodes[k];
                     auto it = std::find_if(_originalLinks[bNode].begin(), _originalLinks[bNode].end(), [&blossomNodes, idx](int leaf) {
@@ -588,7 +588,7 @@ void Matching::augmentPath(int idx)
         childs.clear();
         for (const auto &tmpChild : tmpChilds)
             childs.push_back(tmpChild);
-        for (int i = 0; i < childs.size(); i++)
+        for (int i = 0; i < (int) childs.size(); i++)
             while (!childs[i]->_childrens.empty())
                 childs[i] = childs[i]->_childrens[0];
         tmpChilds.clear();
@@ -632,10 +632,10 @@ void Matching::augmentPath(int idx)
                     loop++;
                 }
                 if (nEdge)
-                    for (int i = 0; i < path.size() - 1; i++)
+                    for (int i = 0; i < (int) path.size() - 1; i++)
                         createLink(path[i], path[i + 1]);
                 else
-                    for (int i = 0; i < path.size() - 1; i++)
+                    for (int i = 0; i < (int) path.size() - 1; i++)
                         removeLink(path[i], path[i + 1]);
             }
             else if (isLinked(_cLinks[endPoint->_nodeIdx], endPoint->_parent->_nodeIdx))
@@ -651,7 +651,7 @@ void Matching::augmentPath(int idx)
 void Matching::print()
 {
     int zerros = 0;
-    for (int i = 0; i < _cLinks.size(); i++)
+    for (int i = 0; i < (int) _cLinks.size(); i++)
         if (_cLinks[i].size() != 1 && _originalLinks[i].size() == 3)
             zerros++;
 
@@ -694,7 +694,7 @@ bool Matching::checkInit()
     while (splitFourConnected());
     auto maxLink = _originalLinks[0].size();
     auto minLink = _originalLinks[0].size();
-    for (int i = 0; i < _originalLinks.size(); i++)
+    for (int i = 0; i < (int) _originalLinks.size(); i++)
     {
         maxLink = std::max(_originalLinks[i].size(), maxLink);
         minLink = std::min(_originalLinks[i].size(), minLink);
@@ -706,12 +706,12 @@ bool Matching::checkInit()
 bool Matching::splitFourConnected()
 {
     bool isFourCo = false;
-    for (int i = 0; i < _originalLinks.size(); i++)
+    for (int i = 0; i < (int) _originalLinks.size(); i++)
     {
         if (_originalLinks[i].size() == 4)
         {
             isFourCo = true;
-            int tmpJ;
+            int tmpJ = -1;
             double minAngle = 10.0;
             for (int j = 0; j < 4; j++)
             {

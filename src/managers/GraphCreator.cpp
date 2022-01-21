@@ -26,7 +26,7 @@
 // If the point a is on the border we pushed it inside the shape and return true
 bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
 	constexpr float EPS = 1e-4f;
-	for(int k = 1; k < border.size(); ++k) {
+	for(int k = 1; k < (int) border.size(); ++k) {
 		glm::vec2 v = border[k-1] - border[k];
 		float l = glm::length(v);
 		v /= l;
@@ -35,7 +35,7 @@ bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
 		if(glm::distance(a, p) > EPS) continue;
 		if(t <= EPS) {
 			int j = k+1;
-			if(j == border.size()) j = 1;
+			if(j == (int) border.size()) j = 1;
 			glm::vec2 w = border[k] - border[j];
 			v += w / glm::length(w);
 			v /= glm::length(v);
@@ -63,15 +63,15 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 	for(const std::vector<Shape> &zones : shapes) {
 		// Reorder to have consecutive stroke colors
 		std::vector<int> perm(zones.size());
-		for(int i = 0; i < perm.size(); ++i) perm[i] = i;
+		for(int i = 0; i < (int) perm.size(); ++i) perm[i] = i;
 		std::sort(perm.begin(), perm.end(), [&](int i, int j) { return zones[i]._printColor < zones[j]._printColor; });
 		colorZones.emplace_back();
 
 		int Z0 = 0;
 
-		while(Z0 < perm.size()) {
+		while(Z0 < (int) perm.size()) {
 			int Z1 = Z0+1;
-			while(Z1 < perm.size() && zones[perm[Z1]]._printColor == zones[perm[Z0]]._printColor) ++ Z1;
+			while(Z1 < (int) perm.size() && zones[perm[Z1]]._printColor == zones[perm[Z0]]._printColor) ++ Z1;
 
 			// Create graph
 			const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
@@ -104,9 +104,9 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 			}
 
 			// update links
-			for(int i = 0; i < graph._points.size(); ++i) {
+			for(int i = 0; i < (int) graph._points.size(); ++i) {
 				int k = 0;
-				while(k < graph._originalLinks[i].size()) {
+				while(k < (int) graph._originalLinks[i].size()) {
 					int j = graph._originalLinks[i][k];
 					std::vector<int>::iterator it = std::find(graph._originalLinks[j].begin(), graph._originalLinks[j].end(), i);
 					if(it == graph._originalLinks[j].end()) ++k;
@@ -190,26 +190,28 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 
 	DirectionField::initVectorField(objZones, shapes, layerIndex);
 
-	std::uniform_real_distribution<> dis(0.0, 1.0);
+	std::uniform_real_distribution<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
 	std::mt19937 gen(Globals::_seed + layerIndex);
-	for (int i = 0; i < shapes.size(); ++i) {
-		Box<double> box;
-		for (const auto &point : shapes[i]._points) box.update(point);
-		std::vector<glm::vec2> toAdd;
-		for (float x = box.x0; x <= box.x1; x += Globals::_d) {
+	for(int i = 0; i < (int) shapes.size(); ++i) {
+		Box<float> box;
+		for (const glm::vec2 &point : shapes[i]._points) box.update(point);
+		std::vector<glm::vec2> centroids;
+		for(float x = box.x0; x <= box.x1; x += Globals::_d) {
 			int j = 1;
 			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
 				glm::vec2 point(x, y);
-				if((++j)&1) point.x -= (Globals::_d / 2.f);
-				point.x += static_cast<float>(dis(gen)) * Globals::_d / 20.f;
-				point.y += static_cast<float>(dis(gen)) * Globals::_d / 20.f;
-				if(shapes[i].isInside(point)) toAdd.push_back(point);
+				if((++j)&1) point.x -= .5f * Globals::_d;
+				point.x += dis(gen);
+				point.y += dis(gen);
+				if(shapes[i].isInside(point)) centroids.push_back(point);
 			}
 		}
-		if(toAdd.size() < 3) {
-			std::swap(shapes[i], shapes.back());
-			std::swap(objZones[i], objZones.back());
-			std::swap(colorZones[i], colorZones.back());
+		if(centroids.size() < 3) {
+			if(i+1 != (int) shapes.size()) {
+				shapes[i] = std::move(shapes.back());
+				objZones[i] = std::move(objZones.back());
+				colorZones[i] = std::move(colorZones.back());
+			}
 			shapes.pop_back();
 			objZones.pop_back();
 			colorZones.pop_back();
@@ -218,7 +220,7 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 		}
 
 		SegmentCVT cvt(&shapes[i], box, layerIndex);
-		graphs.push_back(cvt.optimize(toAdd));
+		graphs.push_back(cvt.optimize(centroids));
 
 		// remove 2co
 		remove2coPoints(shapes[i], graphs.back());
@@ -239,7 +241,7 @@ void GraphCreator::graphFromSvg(const std::string &fileName,
 ////////////////////////////
 
 bool isNear(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
-	for(int i = 1; i < cycle.size(); ++i) {
+	for(int i = 1; i < (int) cycle.size(); ++i) {
 		const glm::vec2 v = cycle[i-1] - cycle[i];
 		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
 	}
@@ -256,7 +258,7 @@ bool isNear(const Shape &shape, const glm::vec2 &p, float eps2=1e-10f) {
 std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &borders, float eps) {
 	// Make black shapes first
 	int B = 0;
-	for(int i = 0; i < borders.size(); ++i)
+	for(int i = 0; i < (int) borders.size(); ++i)
 		if(borders[i]._objcetive == NOTHING)
 			std::swap(borders[B++], borders[i]);
 
@@ -264,10 +266,10 @@ std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &bor
 	std::vector<std::vector<Shape>> fusedShapes(B);
 	for(int i = 0; i < B; ++i) {
 		int j = B;
-		while(j < borders.size()) {
+		while(j < (int) borders.size()) {
 			if(borders[i].isInside(borders[j]._points[0]) || isNear(borders[i], borders[j]._points[0], eps*eps)) {
 				fusedShapes[i].emplace_back(std::move(borders[j]));
-				if(j+1 != borders.size()) borders[j] = std::move(borders.back());
+				if(j+1 != (int) borders.size()) borders[j] = std::move(borders.back());
 				borders.pop_back();
 			} else ++j;
 		}
@@ -313,7 +315,7 @@ std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &bor
 void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
 	// Stack containing points to remove
 	std::vector<int> stack;
-	for (int i = 0; i < graph._points.size(); ++i)
+	for (int i = 0; i < (int) graph._points.size(); ++i)
 		if(graph._originalLinks[i].size() < 3 && !isNear(border, graph._points[i]))
 			stack.push_back(i);
 
@@ -347,7 +349,7 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
 	// Create new indices for remaining points
 	std::vector<int> newIndices(graph._points.size(), -1);
 	int newSize = 0;
-	for(int i = 0; i < newIndices.size(); ++i)
+	for(int i = 0; i < (int) newIndices.size(); ++i)
 		if(!graph._originalLinks[i].empty())
 			newIndices[i] = newSize++;
 
@@ -362,7 +364,7 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
 	}
 
 	// Swapping points and links
-	for(int i = 0; i < newIndices.size(); ++i) {
+	for(int i = 0; i < (int) newIndices.size(); ++i) {
 		int k = newIndices[i];
 		if(k == -1) continue;
 		for(int &l : graph._originalLinks[i]) l = newIndices[l];
@@ -377,7 +379,7 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
 OBJECTIVE getNearestObjective(unsigned int color) {
 	glm::vec3 rgbCol((color & 0xff) / 255.f, ((color >> 8) & 0xff) / 255.f, ((color >> 16) & 0xff) / 255.f);
 	float minDiff = std::numeric_limits<float>::max();
-	int index;
+	int index = -1;
 	for(int i = 0; i < (int) COLORS.size(); i++) {
 		float diff = glm::distance(rgbCol, COLORS[i]);
 		if(diff < minDiff) {

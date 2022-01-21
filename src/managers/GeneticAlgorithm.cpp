@@ -198,12 +198,12 @@ void GeneticAlgorithm::initChampions()
 	std::vector<int> scores(_population.size(), 0);
 	for(int i = 1; i < _nbChampion; ++i) {
 		int idx = 0;
-		for(int j = 0; j < _population.size(); ++j) {
+		for(int j = 0; j < (int) _population.size(); ++j) {
 			scores[j] += getDiff(_champions[i-1], _population[j]);
 			if(scores[j] < scores[idx]) idx = j;
 		}
 		_champions[i] = std::move(_population[idx]);
-		if(idx+1 != _population.size()) _population[idx] = std::move(_population.back());
+		if(idx+1 != (int) _population.size()) _population[idx] = std::move(_population.back());
 		_population.pop_back();
 		scores[idx] = scores.back();
 		scores.pop_back();
@@ -216,7 +216,7 @@ int GeneticAlgorithm::getDiff(const LocalOperator &champ, const LocalOperator &i
 	int score = 0;
 	const std::vector<std::vector<int>> &champLinks = champ.getLinks();
 	const std::vector<std::vector<int>> &indivLinks = indiv.getLinks();
-	for (int i = 0; i < champLinks.size(); i++)
+	for (int i = 0; i < (int) champLinks.size(); i++)
 	{
 		const std::vector<int> &cLinks = champLinks[i];
 		const std::vector<int> &iLinks = indivLinks[i];

@@ -6,20 +6,15 @@
 #define HAMILTON_GLOBALS_H
 
 #include <random>
-#include <thread>
 #include <vector>
-#include <glm/glm.hpp>
+#include <thread>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/geometric.hpp>
 
 typedef unsigned int uint;
 
-struct CSFCerror : public std::exception {
-	const std::string m_msg;
-	CSFCerror(const std::string &msg, const std::string &file, int line):
-		m_msg(msg + "\n\tat " + file + ":" + std::to_string(line)) {}
-	const char* what() const throw() { return m_msg.c_str(); }
-};
-#define THROW_ERROR(msg) throw CSFCerror((msg), __FILE__, __LINE__)
-
+// Objectives
 enum { GREY,        BLUE,      RED,           GREEN,         YELLOW,       CYAN,        BLACK   };
 enum OBJECTIVE { ANISOTROPY,  ISOTROPY,  VECTOR_FIELD,  ORTHO_VECTOR,  VECTOR_ZONE,  ORTHO_ZONE,  NOTHING };
 const std::vector<glm::vec3> COLORS = {
@@ -36,8 +31,35 @@ bool IS_ISOTROPY(int);
 bool IS_VECTOR(int);
 bool IS_ORTHO(int);
 
-class Shape;
+// Class for graphs
+class Graph {
+public:
+	std::vector<glm::vec2>              _points;
+	std::vector<std::vector<int>>       _originalLinks;
+	std::vector<std::vector<int>>       _cells;
+public:
+	Graph(){}
+	static glm::vec2 getCellCenter(const std::vector<int> &, const std::vector<glm::vec2> &);
+};
 
+// Shape containing cycles
+class Shape {
+public:
+	float                               _area;
+	OBJECTIVE                           _objcetive = NOTHING;
+	int                                 _printColor = 0;
+
+	std::vector<glm::vec2>              _points;
+	std::vector<std::vector<glm::vec2>> _holes;
+	std::vector<std::vector<uint>>      _triangles;
+public:
+	Shape(){}
+	Shape(const std::vector<glm::vec2> &pts) { _points = pts; }
+	bool isInside(const glm::vec2 &p) const;
+	void triangulate();
+};
+
+// Class containing constants and some geometry primitives
 class Globals {
 public:
 	// Printer parameters
@@ -58,39 +80,17 @@ public:
 	inline static float			_d = 1.2; // spacing for the graph construction
 
 public:
-	static void         initVariables(int layerNb);
-	static float        polygonArea(const std::vector<glm::vec2> &);
-	static bool         isInPoly(const std::vector<glm::vec2> &, const glm::vec2 &);
-	static bool         intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
-	static bool         intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, float &);
-	static void         getInter(const glm::vec2 &, const glm::vec2 &, const Shape &, std::vector<float> &);
+	static void		initVariables(int layerNb);
+	static float	polygonArea(const std::vector<glm::vec2> &);
+	static bool		isInPoly(const std::vector<glm::vec2> &, const glm::vec2 &);
+	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
+	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, float &);
+	static void		getInter(const glm::vec2 &, const glm::vec2 &, const Shape &, std::vector<float> &);
 };
 
-class Shape {
-public:
-	float                               _area;
-	OBJECTIVE                           _objcetive = NOTHING;
-	int                                 _printColor = 0;
-
-	std::vector<glm::vec2>              _points;
-	std::vector<std::vector<glm::vec2>> _holes;
-	std::vector<std::vector<uint>>      _triangles;
-public:
-	Shape(){}
-	Shape(const std::vector<glm::vec2> &pts) { _points = pts; }
-	bool isInside(const glm::vec2 &p) const;
-	void triangulate();
-};
-
-class Graph {
-public:
-	std::vector<glm::vec2>              _points;
-	std::vector<std::vector<int>>       _originalLinks;
-	std::vector<std::vector<int>>       _cells;
-public:
-	Graph(){}
-	static glm::vec2 getCellCenter(const std::vector<int> &, const std::vector<glm::vec2> &);
-};
+//===============
+// USEFULL STUFF 
+//===============
 
 template <typename Scalar>
 struct Box {
@@ -98,6 +98,10 @@ struct Box {
 	Scalar x1 = std::numeric_limits<Scalar>::lowest();
 	Scalar y0 = std::numeric_limits<Scalar>::max();
 	Scalar y1 = std::numeric_limits<Scalar>::lowest();
+
+	Box() = default;
+	template <typename Scalar2>
+	Box(const Box<Scalar2> &b): x0(b.x0), x1(b.x1), y0(b.y0), y1(b.y1) {}
 
 	template <typename Scalar2>
 	inline void update(const glm::vec<2, Scalar2> &v) {
@@ -127,5 +131,13 @@ namespace glm {
 	template <typename T>
 	inline T distance2(const glm::vec<2, T> &u, const glm::vec<2, T> &v) { return length2(v-u); }
 }
+
+struct CSFCerror : public std::exception {
+	const std::string m_msg;
+	CSFCerror(const std::string &msg, const std::string &file, int line):
+		m_msg(msg + "\n    at " + file + ":" + std::to_string(line)) {}
+	const char* what() const throw() { return m_msg.c_str(); }
+};
+#define THROW_ERROR(msg) throw CSFCerror((msg), __FILE__, __LINE__)
 
 #endif //HAMILTON_GLOBALS_H

@@ -104,10 +104,10 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// 1. creates segments
 	const auto addShapeSegments = [&segments](const Shape &shape)->void {
-		for(int i = 1; i < shape._points.size(); ++i)
+		for(int i = 1; i < (int) shape._points.size(); ++i)
 			segments.emplace_back(shape._points[i-1], shape._points[i]);
 		for(const std::vector<glm::vec2> &hole : shape._holes)
-			for(int i = 1; i < hole.size(); ++i)
+			for(int i = 1; i < (int) hole.size(); ++i)
 				segments.emplace_back(hole[i-1], hole[i]);
 	};
 	bool anyVector = false;
@@ -133,11 +133,9 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	std::priority_queue<std::pair<float, int>> Q;
 	// vector of distances
 	std::vector<float> D(_imgWidth * _imgHeight, std::numeric_limits<float>::max());
-	// diagonal of pixel
-	float diag = glm::length(Globals::_SVGSize / glm::vec2(_imgWidth, _imgHeight));
 
 	// init Q
-	for(int i = 0; i < segments.size(); ++i) {
+	for(int i = 0; i < (int) segments.size(); ++i) {
 		const Segment &seg = segments[i];
 		if(std::abs(seg._v.x) > std::abs(seg._v.y)) {
 			int x0 = seg._a.x / Globals::_SVGSize.x * _imgWidth;
@@ -231,7 +229,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// vector field
 	_vectorField[layerIndex].resize(nearest.size());
-	for(int i = 0; i < nearest.size(); ++i) {
+	for(int i = 0; i < (int) nearest.size(); ++i) {
 		if(nearest[i] == -1) {
 			std::cerr << "Nearest not filled" << std::endl;
 			exit(1);
@@ -254,13 +252,13 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// vector field sum
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
-	for(int i = _imgWidth; i < nearest.size(); ++i)
+	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
-	for(int i = 1; i < nearest.size(); ++i) if(i % _imgWidth != 0)
+	for(int i = 1; i < (int) nearest.size(); ++i) if(i % _imgWidth != 0)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-1];
 
 	// smoothing
-	for(int i = 0; i < nearest.size(); ++i) {
+	for(int i = 0; i < (int) nearest.size(); ++i) {
 		int y = i / _imgWidth;
 		int x = i % _imgWidth;
 		if(_vectorField[layerIndex][i] == glm::vec2(0., 0.)) continue;
@@ -283,7 +281,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// vector field sum
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
-	for(int i = _imgWidth; i < nearest.size(); ++i)
+	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
 
 	delete[] _tmpImages[layerIndex];

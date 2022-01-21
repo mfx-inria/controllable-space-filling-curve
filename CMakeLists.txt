@@ -12,7 +12,7 @@ include_directories(include/)
 include_directories(include/LBFGS)
 
 set(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "-std=c++11 -pthread -O3")
+SET(CMAKE_CXX_FLAGS "-std=c++20 -pthread -O3 -Wall")
 
 add_executable(Hamilton
         src/main.cpp

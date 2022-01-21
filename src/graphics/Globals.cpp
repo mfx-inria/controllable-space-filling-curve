@@ -35,7 +35,7 @@ void Globals::initVariables(int layerNb) {
 // area is positive in counter-clockwise
 float Globals::polygonArea(const std::vector<glm::vec2> &points) {
 	float area = 0.f;
-	for (int i = 1; i < points.size(); i++)
+	for (int i = 1; i < (int) points.size(); i++)
 		area += (points[i-1].x - points[i].x) * (points[i-1].y + points[i].y);
 	return area / 2.f;
 }
@@ -43,7 +43,7 @@ float Globals::polygonArea(const std::vector<glm::vec2> &points) {
 // check if point is inside points
 bool Globals::isInPoly(const std::vector<glm::vec2> &points, const glm::vec2 &point) {
 	bool inside = false;
-	for (int i = 1; i < points.size(); i++) {
+	for (int i = 1; i < (int) points.size(); i++) {
 		float diff = points[i].y - points[i-1].y;
 		if(!diff) continue;
 		if(points[i].y == point.y) {
@@ -81,11 +81,11 @@ bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 
 
 void Globals::getInter(const glm::vec2 &a, const glm::vec2 &b, const Shape &shape, std::vector<float> &ts) {
 	float t;
-	for(int i = 1; i < shape._points.size(); ++i)
+	for(int i = 1; i < (int) shape._points.size(); ++i)
 		if(intersect(a, shape._points[i-1], b, shape._points[i], t))
 			ts.push_back(t);
 	for(const std::vector<glm::vec2> &hole : shape._holes)
-		for(int i = 1; i < hole.size(); ++i)
+		for(int i = 1; i < (int) hole.size(); ++i)
 			if(intersect(a, hole[i-1], b, hole[i], t))
 				ts.push_back(t);
 }
@@ -116,7 +116,7 @@ bool Shape::isInside(const glm::vec2 &p) const {
 glm::vec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<glm::vec2> &points) {
 	glm::vec2 center(0.f, 0.f);
 	float area = 0.;
-	for(int i = 0; i < cell.size(); ++i) {
+	for(int i = 0; i < (int) cell.size(); ++i) {
 		const glm::vec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
 		float dx = b.x - a.x;
 		glm::vec2 s = a+b;

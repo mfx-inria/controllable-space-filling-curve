@@ -13,7 +13,7 @@ void Layer::initLayer(const std::string &fileName, int layerIndex) {
 
 	// match each shape
 	_operators.clear();
-	for(int i = 0; i < graphs.size(); ++i)
+	for(int i = 0; i < (int) graphs.size(); ++i)
 		_operators.emplace_back(zones[i], std::move(strokeZones[i]), bounderies[i], graphs[i], layerIndex);
 
 	// calculte initial score

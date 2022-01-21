@@ -59,7 +59,7 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
     for (const auto &layer : layers)
     {
         // foreach shape in layer
-        for (int i = 0; i < layer._operators.size(); i++)
+        for (int i = 0; i < (int) layer._operators.size(); i++)
         {
             if(!layer._operators[i].isSucces()) continue;
             auto [points, zones] = layer._operators[i].getFinal();
@@ -112,7 +112,7 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
 
 std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::vec3> &points, float extrusionValue, int j, int nb, bool doVary)
 {
-    double F, E = 0.f;
+    double F = 0.f, E = 0.f;
     if (doVary)
     {
         double X = 0.1f;
@@ -132,7 +132,6 @@ std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::vec
 
 float Printer::getExtrusionV(float area, const std::vector<glm::vec3> &points)
 {
-    float porosity = 0.98;
     float volume = area * Globals::_outRPrismeHeight;
     float totalDist = 0;
     int nb = points.size();

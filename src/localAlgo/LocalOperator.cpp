@@ -135,7 +135,7 @@ void LocalOperator::startShuffling(int multiplier, int champ) {
     _gen = std::default_random_engine(Globals::_seed + champ);
     computeIndex();
     std::vector<int> order(_points.size());
-    for(int i = 0; i < order.size(); ++i) order[i] = i;
+    for(int i = 0; i < (int) order.size(); ++i) order[i] = i;
     int N = order.size();
     std::uniform_real_distribution<> dis(0, N);
     bool pred_isEnd = _isEnd;
@@ -164,7 +164,7 @@ void LocalOperator::optimize()
     Eigen::VectorXd x(2 * _points.size());
     int prev = _cLinks[0][0];
     int next = 0;
-    for(int i = 0; i < _points.size(); ++i) {
+    for(int i = 0; i < (int) _points.size(); ++i) {
         x(2*i) = _points[next].x;
         x(2*i+1) = _points[next].y;
         prev = _cLinks[next][0] == prev ? _cLinks[next][1] : _cLinks[next][0];
@@ -297,28 +297,28 @@ std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vect
                     for(const std::pair<int, int> &w : first_pairs)
                         if(v1 != w.first && v1 != w.second && v2 != w.first && v2 != w.second) {
                             bool ok = false;
-                            if(((inds[0]+1) % _points.size()) == inds[1]) { // ... --> 0 --> 1
+                            if(((inds[0]+1) % (int) _points.size()) == inds[1]) { // ... --> 0 --> 1
                                 int i = (inds[0] - _index[v1] + _points.size()) % _points.size();
-                                ok = i < ((inds[0] - _index[v2] + _points.size()) % _points.size())
-                                     && i < ((inds[0] - _index[w.first] + _points.size()) % _points.size())
-                                     && i < ((inds[0] - _index[w.second] + _points.size()) % _points.size());
+                                ok = i < ((inds[0] - _index[v2] + (int) _points.size()) % (int) _points.size())
+                                     && i < ((inds[0] - _index[w.first] +  (int) _points.size()) % (int) _points.size())
+                                     && i < ((inds[0] - _index[w.second] + (int) _points.size()) % (int) _points.size());
                             } else { // ... <-- 0 <-- 1
                                 int i = (_index[v1] - inds[0] + _points.size()) % _points.size();
-                                ok = i < ((_index[v2] - inds[0] + _points.size()) % _points.size())
-                                     && i < ((_index[w.first] - inds[0] + _points.size()) % _points.size())
-                                     && i < ((_index[w.second] - inds[0] + _points.size()) % _points.size());
+                                ok = i < ((_index[v2] - inds[0] + (int) _points.size()) % (int) _points.size())
+                                     && i < ((_index[w.first] - inds[0] +  (int) _points.size()) % (int) _points.size())
+                                     && i < ((_index[w.second] - inds[0] + (int) _points.size()) % (int) _points.size());
                             }
                             if(!ok) {
-                                if(((inds[2]+1) % _points.size()) == inds[1]) { // ... --> 2 --> 1
+                                if(((inds[2]+1) % (int) _points.size()) == inds[1]) { // ... --> 2 --> 1
                                     int i = (inds[2] - _index[w.second] + _points.size()) % _points.size();
-                                    ok = i < ((inds[2] - _index[v2] + _points.size()) % _points.size())
-                                         && i < ((inds[2] - _index[w.first] + _points.size()) % _points.size())
-                                         && i < ((inds[2] - _index[v1] + _points.size()) % _points.size());
+                                    ok = i < ((inds[2] - _index[v2] + (int) _points.size()) % (int) _points.size())
+                                         && i < ((inds[2] - _index[w.first] + (int) _points.size()) % (int) _points.size())
+                                         && i < ((inds[2] - _index[v1] +      (int) _points.size()) % (int) _points.size());
                                 } else { // ... <-- 2 <-- 1
                                     int i = (_index[w.second] - inds[2] + _points.size()) % _points.size();
-                                    ok = i < ((_index[v2] - inds[2] + _points.size()) % _points.size())
-                                         && i < ((_index[w.first] - inds[2] + _points.size()) % _points.size())
-                                         && i < ((_index[v1] - inds[2] + _points.size()) % _points.size());
+                                    ok = i < ((_index[v2] - inds[2] + (int) _points.size()) % (int) _points.size())
+                                         && i < ((_index[w.first] - inds[2] + (int) _points.size()) % (int) _points.size())
+                                         && i < ((_index[v1] - inds[2] +      (int) _points.size()) % (int) _points.size());
                                 }
                             }
                             if(ok) {
@@ -350,7 +350,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<i
         return ans;
 
     const std::vector<int> &link1 = _originalLinks[nodes[1]];
-    for(int i = 1; i < link1.size(); ++i) if(link1[i] != nodes[0] && link1[i] != nodes[2])
+    for(int i = 1; i < (int) link1.size(); ++i) if(link1[i] != nodes[0] && link1[i] != nodes[2])
             for(int j = 0; j < i; ++j)
                 if(isLinked(_cLinks[link1[i]], link1[j]) && link1[j] != nodes[0] && link1[j] != nodes[2]) {
                     tmp_nodes.push_back(link1[i]);
