@@ -11,11 +11,8 @@ struct Segment {
 	glm::vec2 _a, _b, _v;
 	float _len;
 
-	Segment(const glm::vec2 &a, const glm::vec2 &b) {
-		_a = a;
-		_b = b;
-		_v = b - a;
-		_len = std::sqrt(_v.x*_v.x + _v.y*_v.y);
+	Segment(const glm::vec2 &a, const glm::vec2 &b): _a(a), _b(b), _v(b-a) {
+		_len = glm::length(_v);
 		_v /= _len;
 	}
 	
@@ -32,7 +29,7 @@ struct Segment {
 	}
 	
 	inline float normal_angle(const glm::vec2 &p) const {
-		const float t = std::min(_len, std::max(0.f, _v.x * (p.x - _a.x) + _v.y * (p.y - _a.y)));
+		const float t = std::clamp(_v.x * (p.x - _a.x) + _v.y * (p.y - _a.y), 0.f, _len);
 		return std::atan2(p.y - _a.y - t * _v.y, p.x - _a.x - t * _v.x);
 	}
 };
@@ -42,7 +39,6 @@ void DirectionField::init(int layerNb) {
 	DirectionField::_imgHeight = _pixelsWanted / _imgWidth;
 	_vectorField.resize(layerNb);
 	_vectorFieldSum.resize(layerNb);
-	_tmpImages.resize(layerNb);
 }
 
 // get vector from the pixel of the vectorfield
@@ -224,8 +220,9 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	// Render image to know the zones in O(1)
 	/////////
 
-	std::future<u_char*> image_future = _tmpImages[layerIndex].get_future();
-	Window::addToStack(layerIndex, &zones);
+	std::promise<u_char*> image_promise;
+	std::future<u_char*> image_future = image_promise.get_future();
+	Window::addToStack(image_promise, zones);
 	_vectorField[layerIndex].resize(nearest.size());
 	u_char* image = image_future.get();
 
@@ -236,12 +233,12 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	// vector field
 	for(int i = 0; i < (int) nearest.size(); ++i) {
 		if(nearest[i] == -1) THROW_ERROR("Nearest not filled!");
-		bool R = image[3*i] > 128;
-		bool G = image[3*i+1] > 128;
-		int y = i / _imgWidth;
+		const bool R = image[3*i] > 128;
+		const bool G = image[3*i+1] > 128;
 		if(R || G) {
-			int x = i % _imgWidth;
-			glm::vec2 p((x + .5f) * Globals::_SVGSize.x / _imgWidth, (y + .5f) * Globals::_SVGSize.y / _imgHeight);
+			if(R && G) THROW_ERROR("Mix between red and green");
+			const int x = i % _imgWidth, y = i / _imgWidth;
+			const glm::vec2 p((x + .5f) * rat[0], (y + .5f) * rat[1]);
 			float angle = segments[nearest[i]].normal_angle(p);
 			if(G) angle += M_PI_2;
 			_vectorField[layerIndex][i].x = std::cos(angle);
@@ -261,12 +258,11 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// smoothing
 	for(int i = 0; i < (int) nearest.size(); ++i) {
-		int y = i / _imgWidth;
-		int x = i % _imgWidth;
+		int x = i % _imgWidth, y = i / _imgWidth;
 		if(_vectorField[layerIndex][i] == glm::vec2(0., 0.)) continue;
-		const int K = 60;
+		const int K = 40;
 		glm::vec2 s(0.f, 0.f);
-		for(int k = K; k >= 10; k >>= 1) {
+		for(int k = K; k >= 5; k >>= 1) {
 			const int x0 = std::max(0, x-k);
 			const int x1 = std::min(_imgWidth-1, x+k);
 			const int y0 = std::max(0, y-k);
@@ -289,7 +285,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	delete[] image;
 }
 
-void DirectionField::computeImage(int layer, const std::vector<std::vector<Shape>> *zones) {
+void DirectionField::computeImage(std::promise<u_char*> &im, const std::vector<std::vector<Shape>> &zones) {
 	GLuint framebuffer;
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -312,7 +308,7 @@ void DirectionField::computeImage(int layer, const std::vector<std::vector<Shape
 	glLoadIdentity();
 	gluOrtho2D(0.f, Globals::_SVGSize.x, 0.f, Globals::_SVGSize.y);
 	glBegin(GL_TRIANGLES);
-	for(const std::vector<Shape> &zones : *zones) {
+	for(const std::vector<Shape> &zones : zones) {
 		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
 				if(IS_ORTHO(zone._objcetive)) glColor3f(1.f, 0.f, 0.f);
 				else glColor3f(0.f, 1.f, 0.f);
@@ -340,5 +336,5 @@ void DirectionField::computeImage(int layer, const std::vector<std::vector<Shape
 	glDeleteTextures(1, &renderedTexture);
 	glDeleteFramebuffers(1, &framebuffer);
 
-	_tmpImages[layer].set_value(pixels);
+	im.set_value(pixels);
 }

@@ -5,7 +5,6 @@
 #ifndef HAMILTON_GLOBALS_H
 #define HAMILTON_GLOBALS_H
 
-#include <random>
 #include <vector>
 #include <thread>
 #include <glm/vec2.hpp>

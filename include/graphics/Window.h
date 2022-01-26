@@ -6,13 +6,15 @@
 #define HAMILTON_WINDOW_H
 
 #include "managers/GeneticAlgorithm.h"
+#include <future>
+#include <mutex>
 
 class Window {
 public:
 	Window(int argc, char **argv, GeneticAlgorithm* ga);
 
 	void start();
-	static void addToStack(int, const std::vector<std::vector<Shape>> *);
+	static void addToStack(std::promise<u_char*> &, const std::vector<std::vector<Shape>> &);
 	static void stopRefrech();
 
 private:
@@ -31,7 +33,8 @@ private:
 	glm::vec2               _lastClikedPos;
 	bool                    _leftDown = false;
 
-	std::vector<std::pair<int, const std::vector<std::vector<Shape>> *>> _stack;
+	std::mutex _stack_lock;
+	std::vector<std::pair<std::promise<u_char*> &, const std::vector<std::vector<Shape>> &>> _stack;
 
 private:
 	void                    display();
