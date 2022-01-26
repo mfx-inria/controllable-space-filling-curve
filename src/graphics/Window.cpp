@@ -47,7 +47,7 @@ Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
 
 void Window::start() { glutMainLoop(); }
 
-void Window::addToStack(int layer) { currentInstance->_stack.push_back(layer); }
+void Window::addToStack(int layer, const std::vector<std::vector<Shape>> *zones) { currentInstance->_stack.emplace_back(layer, zones); }
 void Window::stopRefrech() { currentInstance->_isRefresh = false; }
 
 void Window::drawCallback() { currentInstance->display(); }
@@ -265,9 +265,9 @@ void Window::displayCycle() {
 
 void Window::display() {
 	while(!_stack.empty()) {
-		int l = _stack.back();
+		auto [l, zones] = _stack.back();
 		_stack.pop_back();
-		DirectionField::computeImage(l);
+		DirectionField::computeImage(l, zones);
 	}
 	glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
 	glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)

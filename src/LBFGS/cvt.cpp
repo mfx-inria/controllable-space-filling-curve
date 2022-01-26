@@ -506,7 +506,6 @@ double SegmentCVT::operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 	}
 
 	if(f < prevF) {
-		static int fileCount = 0;
 		prevF = f;
 		prevX = x;
 	}
@@ -919,7 +918,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 			auto [I, A, B] = _paths[V][ind];
 			int J = (I+1) % N;
 			Vec2 a, v;
-			double l;
+			double l=0.;
 			const bool isPoint = vd_c.contains_point();
 			if(isPoint) {
 				if(vd_c.source_category() == boost::polygon::SOURCE_CATEGORY_SEGMENT_END_POINT) {

@@ -12,7 +12,7 @@ public:
 	Window(int argc, char **argv, GeneticAlgorithm* ga);
 
 	void start();
-	static void addToStack(int);
+	static void addToStack(int, const std::vector<std::vector<Shape>> *);
 	static void stopRefrech();
 
 private:
@@ -31,7 +31,7 @@ private:
 	glm::vec2               _lastClikedPos;
 	bool                    _leftDown = false;
 
-	std::vector<int>        _stack;
+	std::vector<std::pair<int, const std::vector<std::vector<Shape>> *>> _stack;
 
 private:
 	void                    display();

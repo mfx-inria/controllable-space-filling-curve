@@ -7,13 +7,42 @@
 #include <iostream>
 #include <queue>
 
+struct Segment {
+	glm::vec2 _a, _b, _v;
+	float _len;
+
+	Segment(const glm::vec2 &a, const glm::vec2 &b) {
+		_a = a;
+		_b = b;
+		_v = b - a;
+		_len = std::sqrt(_v.x*_v.x + _v.y*_v.y);
+		_v /= _len;
+	}
+	
+	inline float dist2(const glm::vec2 &p) const {
+		const glm::vec2 q = p - _a;
+		float x = _v.x * q.x + _v.y * q.y;
+		const float y = _v.y * q.x - _v.x * q.y;
+		if(x < 0) return x*x + y*y;
+		if(x > _len) {
+			x -= _len;
+			return x*x + y*y;
+		}
+		return y*y;
+	}
+	
+	inline float normal_angle(const glm::vec2 &p) const {
+		const float t = std::min(_len, std::max(0.f, _v.x * (p.x - _a.x) + _v.y * (p.y - _a.y)));
+		return std::atan2(p.y - _a.y - t * _v.y, p.x - _a.x - t * _v.x);
+	}
+};
+
 void DirectionField::init(int layerNb) {
 	DirectionField::_imgWidth = std::sqrt((_pixelsWanted * Globals::_SVGSize.x) / Globals::_SVGSize.y);
 	DirectionField::_imgHeight = _pixelsWanted / _imgWidth;
 	_vectorField.resize(layerNb);
 	_vectorFieldSum.resize(layerNb);
-	_tmpImages.assign(layerNb, nullptr);
-	_tmpZones.resize(layerNb);
+	_tmpImages.resize(layerNb);
 }
 
 // get vector from the pixel of the vectorfield
@@ -117,7 +146,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 				if(ADD_BORDER(shape._objcetive))
 					addShapeSegments(shape);
 			}
-	if(!anyVector) {
+	if(!anyVector) { // if there is no alignment objective the vector field is null
 		_vectorField[layerIndex].assign(_imgWidth * _imgHeight, glm::vec2(0.f, 0.f));
 		_vectorFieldSum[layerIndex].assign(_vectorField[layerIndex].size(), glm::vec2(0.f, 0.f));
 		return;
@@ -130,57 +159,35 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	//////////////
 
 	// The queue
-	std::priority_queue<std::pair<float, int>> Q;
+	typedef std::pair<float, int> QEl;
+	std::priority_queue<QEl, std::vector<QEl>, std::greater<QEl>> Q;
 	// vector of distances
 	std::vector<float> D(_imgWidth * _imgHeight, std::numeric_limits<float>::max());
+	const int imS[2] { _imgWidth, _imgHeight };
+	const float rat[2] { Globals::_SVGSize.x / _imgWidth, Globals::_SVGSize.y / _imgHeight };
 
 	// init Q
 	for(int i = 0; i < (int) segments.size(); ++i) {
 		const Segment &seg = segments[i];
-		if(std::abs(seg._v.x) > std::abs(seg._v.y)) {
-			int x0 = seg._a.x / Globals::_SVGSize.x * _imgWidth;
-			int x1 = seg._b.x / Globals::_SVGSize.x * _imgWidth;
-			if(x0 > x1) std::swap(x0, x1);
-			x0 = std::max(0, x0-1);
-			x1 = std::min(_imgWidth-1, x1+1);
-			for(int x = x0; x <= x1; ++x) {
-				float xf = (x + 0.5f) / _imgWidth * Globals::_SVGSize.x;
-				float y = seg._a.y + (xf - seg._a.x) * seg._v.y / seg._v.x;
-				int y0 = y / Globals::_SVGSize.y * _imgHeight - 1;
-				int y1 = std::min(_imgHeight-1, y0 + 2);
-				y0 = std::max(0, y0);
-				for(int y = y0; y <= y1; ++y) {
-					glm::vec2 p(xf, (y + 0.5f) / _imgHeight * Globals::_SVGSize.y);
-					float d = seg.dist2(p);
-					int pix = x + y * _imgWidth;
-					if(d < D[pix]) {
-						D[pix] = d;
-						nearest[pix] = i;
-						Q.emplace(-d, pix);
-					}
-				}
-			}
-		} else {
-			int y0 = seg._a.y / Globals::_SVGSize.y * _imgHeight;
-			int y1 = seg._b.y / Globals::_SVGSize.y * _imgHeight;
-			if(y0 > y1) std::swap(y0, y1);
-			y0 = std::max(0, y0-1);
-			y1 = std::min(_imgHeight-1, y1+1);
+		const int h = std::abs(seg._v.x) < std::abs(seg._v.y);
+		int x0 = seg._a[h] / rat[h], x1 = seg._b[h] / rat[h];
+		if(x0 > x1) std::swap(x0, x1);
+		x0 = std::max(0, x0-1);
+		x1 = std::min(imS[h]-1, x1+1);
+		for(int x = x0; x <= x1; ++x) {
+			glm::vec2 p;
+			p[h] = (x + 0.5f) * rat[h];
+			const float y = seg._a[h^1] + (p[h] - seg._a[h]) * seg._v[h^1] / seg._v[h];
+			const int y0 = std::max(0, int(y / rat[h^1] - 1.f));
+			const int y1 = std::min(imS[h^1]-1, y0 + 2);
 			for(int y = y0; y <= y1; ++y) {
-				float yf = (y + 0.5f) / _imgHeight * Globals::_SVGSize.y;
-				float x = seg._a.x + (yf - seg._a.y) * seg._v.x / seg._v.y;
-				int x0 = x / Globals::_SVGSize.x * _imgWidth - 1.f;
-				int x1 = std::min(_imgWidth-1, x0 + 2);
-				x0 = std::max(0, x0);
-				for(int x = x0; x <= x1; ++x) {
-					glm::vec2 p((x + 0.5f) / _imgWidth * Globals::_SVGSize.x, yf);
-					float d = seg.dist2(p);
-					int pix = x + y * _imgWidth;
-					if(d < D[pix]) {
-						D[pix] = d;
-						nearest[pix] = i;
-						Q.emplace(-d, pix);
-					}
+				p[h^1] = (y + 0.5f) * rat[h^1];
+				const float d = seg.dist2(p);
+				const int pix = h ? y + x * _imgWidth : x + y * _imgWidth;
+				if(d < D[pix]) {
+					D[pix] = d;
+					nearest[pix] = i;
+					Q.emplace(d, pix);
 				}
 			}
 		}
@@ -188,27 +195,26 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	// propagation
 	while(!Q.empty()) {
-		auto [d, pix] = Q.top();
-		Q.pop();
-		if(-d > D[pix]) continue;
-		int seg_ind = nearest[pix];
-		int x = pix % _imgWidth;
-		int y = pix / _imgWidth;
-		int x0 = x == 0 ? 0 : x-1;
-		int x1 = std::min(_imgWidth, x+2);
-		int y0 = y == 0 ? 0 : y-1;
-		int y1 = std::min(_imgHeight, y+2);
+		auto [d, pix] = Q.top(); Q.pop();
+		if(d > D[pix]) continue;
+		const int seg_ind = nearest[pix];
+		const int x = pix % _imgWidth;
+		const int y = pix / _imgWidth;
+		const int x0 = std::max(0, x-1);
+		const int x1 = std::min(_imgWidth, x+2);
+		const int y0 = std::max(0, y-1);
+		const int y1 = std::min(_imgHeight, y+2);
 		for(int a = x0; a < x1; ++a) {
-			float xf = (a + 0.5f) / _imgWidth * Globals::_SVGSize.x;
+			float xf = (a + 0.5f) * rat[0];
 			for(int b = y0; b < y1; ++b) {
 				int pix2 = a + b * _imgWidth;
 				if(nearest[pix2] == seg_ind) continue;
-				glm::vec2 p(xf, (b + 0.5f) / _imgHeight * Globals::_SVGSize.y);
-				float d2 = segments[seg_ind].dist2(p);
+				const glm::vec2 p(xf, (b + 0.5f) * rat[1]);
+				const float d2 = segments[seg_ind].dist2(p);
 				if(d2 < D[pix2]) {
 					D[pix2] = d2;
 					nearest[pix2] = seg_ind;
-					Q.emplace(-d2, pix2);
+					Q.emplace(d2, pix2);
 				}
 			}
 		}
@@ -218,24 +224,20 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	// Render image to know the zones in O(1)
 	/////////
 
-	_tmpZones[layerIndex] = &zones;
-	Window::addToStack(layerIndex);
-	std::chrono::milliseconds timespan(5);
-	while(_tmpImages[layerIndex] == nullptr) std::this_thread::sleep_for(timespan);
+	std::future<u_char*> image_future = _tmpImages[layerIndex].get_future();
+	Window::addToStack(layerIndex, &zones);
+	_vectorField[layerIndex].resize(nearest.size());
+	u_char* image = image_future.get();
 
 	//////////
 	// Compute the two vector images
 	//////////
 
 	// vector field
-	_vectorField[layerIndex].resize(nearest.size());
 	for(int i = 0; i < (int) nearest.size(); ++i) {
-		if(nearest[i] == -1) {
-			std::cerr << "Nearest not filled" << std::endl;
-			exit(1);
-		}
-		bool R = _tmpImages[layerIndex][3*i] > 128;
-		bool G = _tmpImages[layerIndex][3*i+1] > 128;
+		if(nearest[i] == -1) THROW_ERROR("Nearest not filled!");
+		bool R = image[3*i] > 128;
+		bool G = image[3*i+1] > 128;
 		int y = i / _imgWidth;
 		if(R || G) {
 			int x = i % _imgWidth;
@@ -284,10 +286,10 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
 
-	delete[] _tmpImages[layerIndex];
+	delete[] image;
 }
 
-void DirectionField::computeImage(int layer) {
+void DirectionField::computeImage(int layer, const std::vector<std::vector<Shape>> *zones) {
 	GLuint framebuffer;
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -310,7 +312,7 @@ void DirectionField::computeImage(int layer) {
 	glLoadIdentity();
 	gluOrtho2D(0.f, Globals::_SVGSize.x, 0.f, Globals::_SVGSize.y);
 	glBegin(GL_TRIANGLES);
-	for(const std::vector<Shape> &zones : *_tmpZones[layer]) {
+	for(const std::vector<Shape> &zones : *zones) {
 		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
 				if(IS_ORTHO(zone._objcetive)) glColor3f(1.f, 0.f, 0.f);
 				else glColor3f(0.f, 1.f, 0.f);
@@ -338,30 +340,5 @@ void DirectionField::computeImage(int layer) {
 	glDeleteTextures(1, &renderedTexture);
 	glDeleteFramebuffers(1, &framebuffer);
 
-	_tmpImages[layer] = pixels;
-}
-
-DirectionField::Segment::Segment(const glm::vec2 &a, const glm::vec2 &b) {
-	_a = a;
-	_b = b;
-	_v = b - a;
-	_len = std::sqrt(_v.x*_v.x + _v.y*_v.y);
-	_v /= _len;
-}
-
-inline float DirectionField::Segment::dist2(const glm::vec2 &p) const {
-	glm::vec2 q = p - _a;
-	float x = _v.x * q.x + _v.y * q.y;
-	float y = _v.y * q.x - _v.x * q.y;
-	if(x < 0) return x*x + y*y;
-	if(x > _len) {
-		x -= _len;
-		return x*x + y*y;
-	}
-	return y*y;
-}
-
-inline float DirectionField::Segment::normal_angle(const glm::vec2 &p) const {
-	float t = std::min(_len, std::max(0.f, _v.x * (p.x - _a.x) + _v.y * (p.y - _a.y)));
-	return std::atan2(p.y - _a.y - t * _v.y, p.x - _a.x - t * _v.x);
+	_tmpImages[layer].set_value(pixels);
 }

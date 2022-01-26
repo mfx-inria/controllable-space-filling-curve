@@ -119,7 +119,7 @@ private:
 public:
 	double laplacian_coeff = .125; // control smoothness
 	double length_coeff = .4;
-	double obj_coeff = (0.0125 / 2.f);
+	double obj_coeff = 0.00625f;
 
     Smoother(const Shape *boundary, const std::vector<Shape> *zones, const std::vector<Shape> *strokeZones, double vecArea, int layerIndex);
 

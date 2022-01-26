@@ -3,16 +3,9 @@
 #include <glm/vec2.hpp>
 
 #include <vector>
+#include <future>
 
 class DirectionField {
-
-struct Segment {
-	glm::vec2 _a, _b, _v;
-	float _len;
-	Segment(const glm::vec2 &a, const glm::vec2 &b);
-	float dist2(const glm::vec2 &p) const;
-	float normal_angle(const glm::vec2 &p) const;
-};
 
 private:
 	static inline std::vector<std::vector<glm::vec2>>   _vectorField;
@@ -23,13 +16,12 @@ public:
 	static inline int                                   _imgWidth;
 	static inline int                                   _imgHeight;
 
-	static inline std::vector<u_char*>                                  _tmpImages;
-	static inline std::vector<const std::vector<std::vector<Shape>> *>  _tmpZones;
+	static inline std::vector<std::promise<u_char*>>	_tmpImages;
 
 public:
 	static void			init(int);
 	static void         initVectorField(const std::vector<std::vector<Shape>> &, const std::vector<Shape> &, int);
-	static void         computeImage(int);
+	static void         computeImage(int, const std::vector<std::vector<Shape>> *);
 	static glm::vec2    getVecAtPos(const glm::vec2 &, int);
 	static glm::vec2    getVecUnder(const glm::vec2 &, const glm::vec2 &, int);
 
