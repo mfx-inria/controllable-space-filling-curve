@@ -16,16 +16,16 @@ public:
 	void start();
 	static void addToStack(std::promise<u_char*> &, const std::vector<std::vector<Shape>> &);
 	static void stopRefrech();
+	static void printHelp();
 
 private:
 	inline static Window*  currentInstance;
 
 	GeneticAlgorithm*		_ga;
-	bool                    _isRefresh;
-	bool                    _showAllLinks;
-	bool                    _showAnyLinks;
-	bool                    _showVecField;
-	bool                    _showStrokeColor;
+	bool                    _isRefresh = true;
+	int						_graphMode = 0;
+	bool                    _showVecField = false;
+	bool                    _showPrintColor = true;
 	unsigned int            _layerIndex = 0;
 
 	glm::vec2               _WinCenter = glm::vec2(-1.f, 0.f);

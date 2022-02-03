@@ -49,6 +49,7 @@ int main(int argc, char** argv) {
 	// Start windows and process
 	GeneticAlgorithm ga;
 	Window hm(argc, argv, &ga);
+	Window::printHelp();
 	std::thread(&GeneticAlgorithm::process, &ga, fileName, layerNb).detach();
 	hm.start();
 	return 0;

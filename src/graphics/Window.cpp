@@ -12,7 +12,7 @@
 const float zoom_step = 1.1f;
 
 #define COLOR_INT(color) glColor3f( ((color) & 0xff) / 255.f, (((color) >> 8) & 0xff) / 255.f, (((color) >> 16) & 0xff) / 255.f )
-#define COLOR_INT2(color) glColor3f( .5f * (1.f - ((color) & 0xff) / 255.f), .5f * (1.f - (((color) >> 8) & 0xff) / 255.f), .5f * (1.f - (((color) >> 16) & 0xff) / 255.f) )
+#define COLOR_INT2(color) glm::vec3( ((color) & 0xff) / 255.f, (((color) >> 8) & 0xff) / 255.f, (((color) >> 16) & 0xff) / 255.f )
 
 ////////////////////////
 //
@@ -23,13 +23,6 @@ const float zoom_step = 1.1f;
 // main
 Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
 	currentInstance = this;
-
-	_isRefresh = true;
-	_showAllLinks = false;
-	_showAnyLinks = true;
-	_showVecField = false;
-	_showStrokeColor = false;
-
 	glutInit(&argc, argv);
 
 	// Initialize GLUT
@@ -59,33 +52,45 @@ void Window::keyCallback(unsigned char key, int x, int y) { currentInstance->key
 void Window::mouseCallback(int button, int state, int x, int y) { currentInstance->mouseClicked(button, state, x, y); }
 void Window::motionCallback(int x, int y) { currentInstance->mouseMoved(x, y); }
 
+void Window::printHelp() {
+	std::cout << "=== Window HELP ===\n\n";
+	std::cout << "- Use the mouse wheel to zoom in and out\n";
+	std::cout << "- Use the mouse left button to move when you have zoomed in\n\n";
+
+	std::cout << "- Use E/R to switch to the next/previous layer when the input contains several layers\n";
+	std::cout << "- Use S/D to change graph mode -- Cycle / Graph / Nothing --\n";
+	std::cout << "- Use X to enable/disable the vector field display\n";
+	std::cout << "- Use C to switch between the print color mode and the objective color mode\n";
+	std::cout << "   BLACK=NOTHING    GREY=ANISOTROPY    BLUE=ISOTROPY\n";
+	std::cout << "   RED=BORDER_ALIGMENT    GREEN=ORTHOGONAL_BORDER_ALIGMENT\n";
+	std::cout << "   YELLOW=BORDER_ALIGMENT    CYAN=ORTHOGONAL_BORDER_ALIGMENT  +++ Adding the border of the zone for aligment\n\n";
+}
+
 // key manager
 void Window::keyPressed(unsigned char key, int x, int y) {
 	switch (key) {
-		// go to next layer
-		case 'r':
+		case 'e': // go to next layer
 			if(_ga->getNbReadyLayers() > 0) _layerIndex = (_layerIndex + 1) % _ga->getNbReadyLayers();
 			glutPostRedisplay();
 			break;
-		// go to previous layer
-		case 't':
+		case 'r': // go to previous layer
 			if(_ga->getNbReadyLayers() > 0) _layerIndex = (_layerIndex + _ga->getNbReadyLayers() - 1) % _ga->getNbReadyLayers();
 			glutPostRedisplay();
 			break;
-		case 'z':
-			_showAllLinks = !_showAllLinks;
+		case 's': // go to next graph mode
+			_graphMode = (_graphMode+1)%3;
 			glutPostRedisplay();
 			break;
-		case 'e':
-			_showAnyLinks = !_showAnyLinks;
+		case 'd': // go to previous graph mode
+			_graphMode = (_graphMode+2)%3;
 			glutPostRedisplay();
 			break;
-		case 'a':
+		case 'x':
 			_showVecField = !_showVecField;
 			glutPostRedisplay();
 			break;
 		case 'c':
-			_showStrokeColor = !_showStrokeColor;
+			_showPrintColor = !_showPrintColor;
 			glutPostRedisplay();
 			break;
 	}
@@ -163,8 +168,8 @@ void Window::displayCycle() {
 	// Show background
 	glBegin(GL_TRIANGLES);
 	for(const LocalOperator &op : layer._operators) {
-		for(const Shape &zone : (_showStrokeColor ? op.getStrokeZones() : op.getZones())) {
-			if(_showStrokeColor) COLOR_INT(zone._printColor);
+		for(const Shape &zone : (_showPrintColor ? op.getStrokeZones() : op.getZones())) {
+			if(_showPrintColor) COLOR_INT(zone._printColor);
 			else glColor3f(COLORS[zone._objcetive].x, COLORS[zone._objcetive].y, COLORS[zone._objcetive].z);
 			for(uint i : zone._triangles[0]) drawVertex(zone._points[i]);
 			glColor3f(1.f, 1.f, 1.f);
@@ -178,7 +183,7 @@ void Window::displayCycle() {
 	glBegin(GL_LINES);
 	glColor3f(0.38f, 0.51f, 0.71f); // blue
 	for(const LocalOperator &op : layer._operators) {
-		for(const Shape &zone : (_showStrokeColor ? op.getStrokeZones() : op.getZones())) {
+		for(const Shape &zone : (_showPrintColor ? op.getStrokeZones() : op.getZones())) {
 			for(int i = 1; i < (int) zone._points.size(); ++i) {
 				drawVertex(zone._points[i - 1]);
 				drawVertex(zone._points[i]);
@@ -194,49 +199,19 @@ void Window::displayCycle() {
 	glEnd();
 
 	// Show links
-	if(_showAnyLinks) {
+	if(_graphMode != 2) {
 		for(const LocalOperator &op : layer._operators) {
 			auto [points, cLinks, oriLinks] = op.getGraph();
+			const std::vector<std::vector<int>> &links = _graphMode ? oriLinks : cLinks;
 			glBegin(GL_LINES);
-
-			// glColor3f(17.f/255.f, 42.f/255.f, 60.f/255.f); // dark blue
-			glColor3f(97.f/400.f, 130.f/400.f, 181.f/400.f); // dark blue
-			glLineWidth(12.0f);
-			if(!_showAllLinks) {
-				for(int i = 0; i < (int) cLinks.size(); i++) {
-					for(int j : cLinks[i]) {
-						drawVertex(points[i]);
-						drawVertex(points[j]);
-					}
-				}
-			} else {
-				for(int i = 0; i < (int) oriLinks.size(); i++) {
-					for(int j : oriLinks[i]) {
-						drawVertex(points[i]);
-						drawVertex(points[j]);
-					}
-				}
+			glLineWidth(14.0f);
+			for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
+				const int z = op._zone[k];
+				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getZones()[z]._printColor) : COLORS[op.getZones()[z]._objcetive];
+				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
+				drawVertex(points[k]);
 			}
-
 			glEnd();
-
-			// double squareSize = 0.0004 * glm::length(Globals::_SVGSize) / std::max(1.f, .05f*_zoom);
-			// glBegin(GL_QUADS);
-			// for (int i = 0; i < points.size(); ++i) {
-			//     const glm::vec2 &pos = points[i];
-			//     if(_showStrokeColor) COLOR_INT2(op.getStrokeColor(i));
-			//     else {
-			//         int fill = op.getZones()[op._zone[i]]._fillColor;
-			//         if(fill == BLACK) glColor3f(.9f, .9f, .9f);
-			//         else glColor3f(.5f * (1.f - COLORS[fill].x), .5f * (1.f - COLORS[fill].y), .5f * (1.f - COLORS[fill].z));
-			//     }
-
-			//     drawVertex(pos + glm::vec2(-squareSize, -squareSize));
-			//     drawVertex(pos + glm::vec2(squareSize, -squareSize));
-			//     drawVertex(pos + glm::vec2(squareSize, squareSize));
-			//     drawVertex(pos + glm::vec2(-squareSize, squareSize));
-			// }
-			// glEnd();
 		}
 	}
 

@@ -20,4 +20,8 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-**Warning:** The code is currently being refactored. Instructions to use the code will be given in few days or week. We are working to make its use simpler.
+You can reproduce the right brain of Figure 12. using the following command
+```bash
+./build/Hamilton input/brain.txt
+```
+A window will appear. You will need to wait a bit before the model is displayed in the window. Some help to use the window will be printed in the terminal at the beginning 
