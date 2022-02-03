@@ -1,0 +1,2 @@
+path people.svg
+d 1.68
