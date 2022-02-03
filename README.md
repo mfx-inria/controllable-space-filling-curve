@@ -20,8 +20,9 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-You can reproduce the right brain of Figure 12. using the following command
+You can reproduce the right brain of Figure 12 and our result in Figure 25 using the following commands
 ```bash
 ./build/Hamilton input/brain.txt
+./build/Hamilton input/people.txt
 ```
 A window will appear. You will need to wait a bit before the model is displayed in the window. Some help to use the window will be printed in the terminal at the beginning 
