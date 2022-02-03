@@ -9,17 +9,12 @@
 
 class GraphCreator {
 public:
-    static void graphFromSvg(const std::string &,
-                             std::vector<Shape> &,
-                             std::vector<std::vector<Shape>> &,
-                             std::vector<std::vector<Shape>> &,
-                             std::vector<Graph> &,
-                             int);
-
-private:
-    static void                 remove2coPoints(Shape &, Graph &);
-    static void                 getShapeFromSVG(const std::string &, std::vector<Shape> &);
-    static std::vector<std::vector<Shape>> fuseShapes(std::vector<Shape> &, float);
+    static void graphFromSvg(const std::string &fileName,
+								std::vector<Shape> &shapes,
+								std::vector<std::vector<Shape>> &objZones,
+								std::vector<std::vector<Shape>> &colorZones,
+								std::vector<Graph> &graphs,
+								int layerIndex);
 };
 
 #endif //HAMILTON_GRAPHCREATOR_H

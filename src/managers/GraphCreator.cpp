@@ -11,52 +11,156 @@
 #include <fstream>
 #include <random>
 
-////////////////////////////
-//                        //
-//      SHAPE CREATORS    //
-//                        //
-////////////////////////////
-/*
- *  GraphCreator's objective is to create Shape objects
- *  containing points and links. Then, each Shape will be
- *  drawn separatly
- *
- *  Each Shape only initializes _originalLinks and not _links
- */
-
-// If the point a is on the border we pushed it inside the shape and return true
-bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
-	constexpr float EPS = 1e-4f;
-	for(int k = 1; k < (int) border.size(); ++k) {
-		glm::vec2 v = border[k-1] - border[k];
-		float l = glm::length(v);
-		v /= l;
-		float t = std::max(0.f, std::min(l, glm::dot(v, a-border[k])));
-		glm::vec2 p = border[k] + t * v;
-		if(glm::distance(a, p) > EPS) continue;
-		if(t <= EPS) {
-			int j = k+1;
-			if(j == (int) border.size()) j = 1;
-			glm::vec2 w = border[k] - border[j];
-			v += w / glm::length(w);
-			v /= glm::length(v);
-			p = border[k];
-		} else if(t+EPS >= l) {
-			int j = k-2;
-			if(j < 0) j = border.size() - 2;
-			glm::vec2 w = border[j] - border[k-1];
-			v += w / glm::length(w);
-			v /= glm::length(v);
-			p = border[k-1];
+// Return the index of the nearest objective from color
+OBJECTIVE getNearestObjective(unsigned int color) {
+	glm::vec3 rgbCol((color & 0xff) / 255.f, ((color >> 8) & 0xff) / 255.f, ((color >> 16) & 0xff) / 255.f);
+	float minDiff = std::numeric_limits<float>::max();
+	int index = -1;
+	for(int i = 0; i < (int) COLORS.size(); i++) {
+		float diff = glm::distance(rgbCol, COLORS[i]);
+		if(diff < minDiff) {
+			minDiff = diff;
+			index = i;
 		}
-		v *= EPS;
-		a.x = p.x - v.y;
-		a.y = p.y + v.x;
-		return true;
+	}
+	return (OBJECTIVE) index;
+}
+
+// Construct shapes from SVG
+void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
+	shapes.clear();
+	std::vector<Shape> holes;
+	struct NSVGimage* image;
+	image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
+	if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
+	for(NSVGshape *shape = image->shapes; shape != NULL; shape = shape->next) {
+		std::vector<Shape> shapesAdd, holesAdd;
+		float maxArea = 0.f;
+		for(NSVGpath *path = shape->paths; path != NULL; path = path->next) {
+			Shape polygon;
+			polygon._points.reserve(path->npts/3+1);
+			for (int i = 0; i < path->npts; i += 3) {
+				float* p = &path->pts[i*2];
+				polygon._points.emplace_back(p[0], p[1]);
+			}
+			polygon._area = Globals::polygonArea(polygon._points);
+			if(std::abs(polygon._area) > std::abs(maxArea)) maxArea = polygon._area;
+
+			if(shape->fill.type) polygon._objcetive = getNearestObjective(shape->fill.color);
+			if(shape->stroke.type) polygon._printColor = shape->stroke.color;
+			if(polygon._area > 0.f) holesAdd.emplace_back(std::move(polygon));
+			else {
+				polygon._area = -polygon._area;
+				shapesAdd.emplace_back(std::move(polygon));
+			}
+		}
+
+		if(maxArea > 0.f) { // swap shapes and hole if needed
+			std::swap(holesAdd, shapesAdd);
+			for(Shape &shape : shapesAdd) std::reverse(shape._points.begin(), shape._points.end());
+			for(Shape &hole : holesAdd) std::reverse(hole._points.begin(), hole._points.end());
+		}
+
+		// order shapes by area, from small to big
+		sort(shapesAdd.begin(), shapesAdd.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
+
+		// put the hole inside the shapes
+		for(Shape &hole : holesAdd)
+			for(Shape &shapeTmp: shapesAdd)
+				if(Globals::isInPoly(shapeTmp._points, hole._points[0])) {
+					shapeTmp._holes.emplace_back(std::move(hole._points));
+					break;
+				}
+
+		shapes.insert(shapes.end(), std::make_move_iterator(shapesAdd.begin()), std::make_move_iterator(shapesAdd.end()));
+	}
+	sort(shapes.begin(), shapes.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
+	nsvgDelete(image);
+}
+
+// Return the diagonal of the smallest axis-aligned rectangle containing shapes
+inline float getDiag(const std::vector<Shape> &shapes) {
+	Box<float> box;
+	for(const Shape &s : shapes) for(const glm::vec2 &p : s._points) box.update(p);
+	return box.diag();
+}
+
+// Retrun true if p is at a distance < sqrt(eps2) from cycle 
+inline bool isNear(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
+	for(int i = 1; i < (int) cycle.size(); ++i) {
+		const glm::vec2 v = cycle[i-1] - cycle[i];
+		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
 	}
 	return false;
 }
 
+// Retrun true if p is at a distance < sqrt(eps2) from shape border 
+inline bool isNear(const Shape &shape, const glm::vec2 &p, float eps2=1e-10f) {
+	if(isNear(shape._points, p, eps2)) return true;
+	for(const std::vector<glm::vec2> &hole : shape._holes)
+		if(isNear(hole, p, eps2)) return true;
+	return false;
+}
+
+// Find objective zones and regroup them inside their shapes
+std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, float eps) {
+	// Make black shapes first
+	int B = 0;
+	for(int i = 0; i < (int) shapes.size(); ++i)
+		if(shapes[i]._objcetive == NOTHING)
+			std::swap(shapes[B++], shapes[i]);
+
+	// Fuse black shapes with inner shapes
+	std::vector<std::vector<Shape>> objZones(B);
+	for(int i = 0; i < B; ++i) {
+		int j = B;
+		while(j < (int) shapes.size()) {
+			if(shapes[i].isInside(shapes[j]._points[0]) || isNear(shapes[i], shapes[j]._points[0], eps*eps)) {
+				objZones[i].emplace_back(std::move(shapes[j]));
+				if(j+1 != (int) shapes.size()) shapes[j] = std::move(shapes.back());
+				shapes.pop_back();
+			} else ++j;
+		}
+	}
+	objZones.resize(shapes.size());
+	for(int i = 0; i < (int) shapes.size(); ++i)
+		if(objZones[i].empty())
+			objZones[i].emplace_back(shapes[i]);
+	for(int i = B; i < (int) shapes.size(); ++i) shapes[i]._objcetive = NOTHING;
+
+	// sort borders
+	std::vector<uint> perm(shapes.size());
+	for(uint i = 0; i < perm.size(); ++i) perm[i] = i;
+	std::sort(perm.begin(), perm.end(), [&](uint i, uint j) { return shapes[i]._area > shapes[j]._area; });
+	for(uint i = 0; i < perm.size(); ++i) {
+		uint j = i;
+		while(perm[j] != i) {
+			uint k = perm[j];
+			std::swap(shapes[j], shapes[k]);
+			std::swap(objZones[j], objZones[k]);
+			perm[j] = j;
+			j = k;
+		}
+		perm[j] = j;
+	}
+
+	// sort zones
+	for(std::vector<Shape> &zones : objZones)
+		std::sort(zones.begin(), zones.end(), [](const Shape &a, const Shape &b) { return a._area > b._area; });
+
+	// remove holes area
+	for(std::vector<Shape> &zones : objZones)
+		for(Shape &zone : zones)
+			for(const std::vector<glm::vec2> &hole : zone._holes)
+				zone._area -= Globals::polygonArea(hole);
+	for(Shape &b : shapes)
+		for(const std::vector<glm::vec2> &hole : b._holes)
+			b._area -= Globals::polygonArea(hole);
+
+	return objZones;
+}
+
+// Merge adjacent objectives zones with same print color together
 std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, float eps) {
 	std::vector<std::vector<Shape>> colorZones;
 	colorZones.reserve(shapes.size());
@@ -163,157 +267,40 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 	return colorZones;
 }
 
-float getDiag(const std::vector<Shape> &shapes) {
-	Box<float> box;
-	for(const Shape &s : shapes) for(const glm::vec2 &p : s._points) box.update(p);
-	return box.diag();
-}
-
-// Create Graph from an SVG file.
-void GraphCreator::graphFromSvg(const std::string &fileName,
-								std::vector<Shape> &shapes,
-								std::vector<std::vector<Shape>> &objZones,
-								std::vector<std::vector<Shape>> &colorZones,
-								std::vector<Graph> &graphs,
-								int layerIndex)
-{
-	graphs.clear();
-	getShapeFromSVG(fileName, shapes);
-	const float eps = 1e-5f * getDiag(shapes);
-	objZones = fuseShapes(shapes, eps);
-	colorZones = mergeColorZones(objZones, eps);
-
-	// Compute triangulations
-	for(auto shapes : {&objZones, &colorZones})
-		for(std::vector<Shape> &zones : *shapes)
-			for(Shape &zone : zones)
-				zone.triangulate();
-
-	DirectionField::initVectorField(objZones, shapes, layerIndex);
-
-	std::uniform_real_distribution<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
-	std::mt19937 gen(Globals::_seed + layerIndex);
-	for(int i = 0; i < (int) shapes.size(); ++i) {
-		Box<float> box;
-		for (const glm::vec2 &point : shapes[i]._points) box.update(point);
-		std::vector<glm::vec2> centroids;
-		for(float x = box.x0; x <= box.x1; x += Globals::_d) {
-			int j = 1;
-			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
-				glm::vec2 point(x, y);
-				if((++j)&1) point.x -= .5f * Globals::_d;
-				point.x += dis(gen);
-				point.y += dis(gen);
-				if(shapes[i].isInside(point)) centroids.push_back(point);
-			}
+// If the point is on the border we pushed it inside the shape and return true
+bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
+	constexpr float EPS = 1e-4f;
+	for(int k = 1; k < (int) border.size(); ++k) {
+		glm::vec2 v = border[k-1] - border[k];
+		float l = glm::length(v);
+		v /= l;
+		float t = std::max(0.f, std::min(l, glm::dot(v, a-border[k])));
+		glm::vec2 p = border[k] + t * v;
+		if(glm::distance(a, p) > EPS) continue;
+		if(t <= EPS) {
+			int j = k+1;
+			if(j == (int) border.size()) j = 1;
+			glm::vec2 w = border[k] - border[j];
+			v += w / glm::length(w);
+			v /= glm::length(v);
+			p = border[k];
+		} else if(t+EPS >= l) {
+			int j = k-2;
+			if(j < 0) j = border.size() - 2;
+			glm::vec2 w = border[j] - border[k-1];
+			v += w / glm::length(w);
+			v /= glm::length(v);
+			p = border[k-1];
 		}
-		if(centroids.size() < 3) {
-			if(i+1 != (int) shapes.size()) {
-				shapes[i] = std::move(shapes.back());
-				objZones[i] = std::move(objZones.back());
-				colorZones[i] = std::move(colorZones.back());
-			}
-			shapes.pop_back();
-			objZones.pop_back();
-			colorZones.pop_back();
-			-- i;
-			continue;
-		}
-
-		SegmentCVT cvt(&shapes[i], box, layerIndex);
-		graphs.push_back(cvt.optimize(centroids));
-
-		// remove 2co
-		remove2coPoints(shapes[i], graphs.back());
-
-		// push points inside
-		for(glm::vec2 &p : graphs.back()._points) {
-			if(push_inside(shapes[i]._points, p)) continue;
-			for(const std::vector<glm::vec2> &in : shapes[i]._holes)
-				if(push_inside(in, p)) break;
-		}
-	}
-}
-
-////////////////////////////
-//                        //
-//         HELPERS        //
-//                        //
-////////////////////////////
-
-bool isNear(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
-	for(int i = 1; i < (int) cycle.size(); ++i) {
-		const glm::vec2 v = cycle[i-1] - cycle[i];
-		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
+		v *= EPS;
+		a.x = p.x - v.y;
+		a.y = p.y + v.x;
+		return true;
 	}
 	return false;
 }
 
-bool isNear(const Shape &shape, const glm::vec2 &p, float eps2=1e-10f) {
-	if(isNear(shape._points, p, eps2)) return true;
-	for(const std::vector<glm::vec2> &hole : shape._holes)
-		if(isNear(hole, p, eps2)) return true;
-	return false;
-}
-
-std::vector<std::vector<Shape>> GraphCreator::fuseShapes(std::vector<Shape> &borders, float eps) {
-	// Make black shapes first
-	int B = 0;
-	for(int i = 0; i < (int) borders.size(); ++i)
-		if(borders[i]._objcetive == NOTHING)
-			std::swap(borders[B++], borders[i]);
-
-	// Fuse black shapes with inner shapes
-	std::vector<std::vector<Shape>> fusedShapes(B);
-	for(int i = 0; i < B; ++i) {
-		int j = B;
-		while(j < (int) borders.size()) {
-			if(borders[i].isInside(borders[j]._points[0]) || isNear(borders[i], borders[j]._points[0], eps*eps)) {
-				fusedShapes[i].emplace_back(std::move(borders[j]));
-				if(j+1 != (int) borders.size()) borders[j] = std::move(borders.back());
-				borders.pop_back();
-			} else ++j;
-		}
-	}
-	fusedShapes.resize(borders.size());
-	for(int i = 0; i < (int) borders.size(); ++i)
-		if(fusedShapes[i].empty())
-			fusedShapes[i].emplace_back(borders[i]);
-	for(int i = B; i < (int) borders.size(); ++i) borders[i]._objcetive = NOTHING;
-
-	// sort borders
-	std::vector<uint> perm(borders.size());
-	for(uint i = 0; i < perm.size(); ++i) perm[i] = i;
-	std::sort(perm.begin(), perm.end(), [&](uint i, uint j) { return borders[i]._area > borders[j]._area; });
-	for(uint i = 0; i < perm.size(); ++i) {
-		uint j = i;
-		while(perm[j] != i) {
-			uint k = perm[j];
-			std::swap(borders[j], borders[k]);
-			std::swap(fusedShapes[j], fusedShapes[k]);
-			perm[j] = j;
-			j = k;
-		}
-		perm[j] = j;
-	}
-
-	// sort zones
-	for(std::vector<Shape> &zones : fusedShapes)
-		std::sort(zones.begin(), zones.end(), [](const Shape &a, const Shape &b) { return a._area > b._area; });
-
-	// remove holes area
-	for(std::vector<Shape> &zones : fusedShapes)
-		for(Shape &zone : zones)
-			for(const std::vector<glm::vec2> &hole : zone._holes)
-				zone._area -= Globals::polygonArea(hole);
-	for(Shape &b : borders)
-		for(const std::vector<glm::vec2> &hole : b._holes)
-			b._area -= Globals::polygonArea(hole);
-
-	return fusedShapes;
-}
-
-void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
+void remove2coPoints(Shape &border, Graph &graph) {
 	// Stack containing points to remove
 	std::vector<int> stack;
 	for (int i = 0; i < (int) graph._points.size(); ++i)
@@ -376,68 +363,69 @@ void GraphCreator::remove2coPoints(Shape &border, Graph &graph) {
 	graph._points.resize(newSize);
 }
 
-// Return the index of the nearest objective from color
-OBJECTIVE getNearestObjective(unsigned int color) {
-	glm::vec3 rgbCol((color & 0xff) / 255.f, ((color >> 8) & 0xff) / 255.f, ((color >> 16) & 0xff) / 255.f);
-	float minDiff = std::numeric_limits<float>::max();
-	int index = -1;
-	for(int i = 0; i < (int) COLORS.size(); i++) {
-		float diff = glm::distance(rgbCol, COLORS[i]);
-		if(diff < minDiff) {
-			minDiff = diff;
-			index = i;
-		}
-	}
-	return (OBJECTIVE) index;
-}
+// Create Graph from an SVG file.
+void GraphCreator::graphFromSvg(const std::string &fileName,
+								std::vector<Shape> &shapes,
+								std::vector<std::vector<Shape>> &objZones,
+								std::vector<std::vector<Shape>> &colorZones,
+								std::vector<Graph> &graphs,
+								int layerIndex)
+{
+	graphs.clear();
+	getShapeFromSVG(fileName, shapes);
+	const float eps = 1e-5f * getDiag(shapes);
+	objZones = regroupObjZones(shapes, eps);
+	colorZones = mergeColorZones(objZones, eps);
 
-void GraphCreator::getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
-	shapes.clear();
-	std::vector<Shape> holes;
-	struct NSVGimage* image;
-	image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
-	if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
-	for(NSVGshape *shape = image->shapes; shape != NULL; shape = shape->next) {
-		std::vector<Shape> shapesAdd, holesAdd;
-		float maxArea = 0.f;
-		for(NSVGpath *path = shape->paths; path != NULL; path = path->next) {
-			Shape polygon;
-			polygon._points.reserve(path->npts/3+1);
-			for (int i = 0; i < path->npts; i += 3) {
-				float* p = &path->pts[i*2];
-				polygon._points.emplace_back(p[0], p[1]);
-			}
-			polygon._area = Globals::polygonArea(polygon._points);
-			if(std::abs(polygon._area) > std::abs(maxArea)) maxArea = polygon._area;
+	// Compute triangulations
+	for(auto shapes : {&objZones, &colorZones})
+		for(std::vector<Shape> &zones : *shapes)
+			for(Shape &zone : zones)
+				zone.triangulate();
 
-			if(shape->fill.type) polygon._objcetive = getNearestObjective(shape->fill.color);
-			if(shape->stroke.type) polygon._printColor = shape->stroke.color;
-			if(polygon._area > 0.f) holesAdd.emplace_back(std::move(polygon));
-			else {
-				polygon._area = -polygon._area;
-				shapesAdd.emplace_back(std::move(polygon));
+	DirectionField::initVectorField(objZones, shapes, layerIndex);
+
+	std::uniform_real_distribution<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
+	std::mt19937 gen(Globals::_seed + layerIndex);
+	for(int i = 0; i < (int) shapes.size(); ++i) {
+		Box<float> box;
+		for (const glm::vec2 &point : shapes[i]._points) box.update(point);
+		std::vector<glm::vec2> centroids;
+		for(float x = box.x0; x <= box.x1; x += Globals::_d) {
+			int j = 1;
+			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
+				glm::vec2 point(x, y);
+				if((++j)&1) point.x -= .5f * Globals::_d;
+				point.x += dis(gen);
+				point.y += dis(gen);
+				if(shapes[i].isInside(point)) centroids.push_back(point);
 			}
 		}
-
-		if(maxArea > 0.f) { // swap shapes and hole if needed
-			std::swap(holesAdd, shapesAdd);
-			for(Shape &shape : shapesAdd) std::reverse(shape._points.begin(), shape._points.end());
-			for(Shape &hole : holesAdd) std::reverse(hole._points.begin(), hole._points.end());
+		if(centroids.size() < 3) {
+			if(i+1 != (int) shapes.size()) {
+				shapes[i] = std::move(shapes.back());
+				objZones[i] = std::move(objZones.back());
+				colorZones[i] = std::move(colorZones.back());
+			}
+			shapes.pop_back();
+			objZones.pop_back();
+			colorZones.pop_back();
+			-- i;
+			continue;
 		}
 
-		// order shapes by area, from small to big
-		sort(shapesAdd.begin(), shapesAdd.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
+		SegmentCVT cvt(&shapes[i], box, layerIndex);
+		graphs.push_back(cvt.optimize(centroids));
 
-		// put the hole inside the shapes
-		for(Shape &hole : holesAdd)
-			for(Shape &shapeTmp: shapesAdd)
-				if(Globals::isInPoly(shapeTmp._points, hole._points[0])) {
-					shapeTmp._holes.emplace_back(std::move(hole._points));
-					break;
-				}
+		// remove 2co
+		remove2coPoints(shapes[i], graphs.back());
 
-		shapes.insert(shapes.end(), std::make_move_iterator(shapesAdd.begin()), std::make_move_iterator(shapesAdd.end()));
+		// push points inside
+		for(glm::vec2 &p : graphs.back()._points) {
+			if(push_inside(shapes[i]._points, p)) continue;
+			for(const std::vector<glm::vec2> &in : shapes[i]._holes)
+				if(push_inside(in, p)) break;
+		}
 	}
-	sort(shapes.begin(), shapes.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
-	nsvgDelete(image);
 }
+
