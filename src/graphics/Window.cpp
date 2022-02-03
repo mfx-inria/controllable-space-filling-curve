@@ -136,7 +136,6 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 			p.y = std::max(0.f, std::min(Globals::_SVGSize.y, p.y));
 			_zoom *= zoom_step;
 			_WinCenter = p + (_WinCenter - p) / zoom_step;
-			glutPostRedisplay();
 		} else if(button == 4) {
 			p.x = std::max(0.f, std::min(Globals::_SVGSize.x, p.x));
 			p.y = std::max(0.f, std::min(Globals::_SVGSize.y, p.y));
@@ -144,9 +143,9 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 			_zoom /= div;
 			_WinCenter = p + (_WinCenter - p) * div;
 			replaceCenter();
-			glutPostRedisplay();
 		}
 	}
+	glutPostRedisplay();
 }
 
 // Display

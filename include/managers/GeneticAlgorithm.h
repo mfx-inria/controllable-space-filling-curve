@@ -7,11 +7,17 @@
 
 #include "tools/Layer.h"
 
-class GeneticAlgorithm
-{
+class GeneticAlgorithm {
 public:
     std::vector<Layer>  _layers;
     static inline int   _multiplier = 15;
+
+public:
+    GeneticAlgorithm();
+
+	void	process(const std::string &fileName, int layerNb);
+    
+	inline int getNbReadyLayers() const { return _nbReadyLayers; }
 
 private:
     int                 _nbIndividuals;
@@ -22,20 +28,14 @@ private:
     std::vector<LocalOperator>  _population;
     std::vector<LocalOperator>  _champions;
 
-public:
-    GeneticAlgorithm();
-    void                initLayers(const std::string &, int );
-    void                initLayers(const std::string &);
-    void                shuffle();
-    void                generateNewGeneration(std::vector<LocalOperator> &);
-    void                upgradeGeneration();
-    void                finishUpGeneration();
-    void                initChampions();
-    int                 getDiff(const LocalOperator &, const LocalOperator &) const;
-    void                optimize();
-    int                 getGen() const;
-    int                 getNbReadyLayers() const;
-	void				process(const std::string &fileName, int layerNb);
+private:
+    void	initLayers(const std::string &fileName, int nbLayer);
+    void	initCycles();
+    void	shuffle();
+    void	initChampions();
+    void	upgradeGeneration();
+    void	finishUpGeneration();
+    void	optimize();
 };
 
 #endif //HAMILTON_GENETICALGORITHM_H

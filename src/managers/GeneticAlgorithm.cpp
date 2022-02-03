@@ -10,10 +10,15 @@
 #include <atomic>
 #include <GL/freeglut.h>
 
+GeneticAlgorithm::GeneticAlgorithm() {
+	_nbIndividuals = _nbChampion * _sonPerChamp;
+}
+
 void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	// Algorithm
-	std::cout << "===== Graph Construction ======" << std::endl;
 	initLayers(fileName, layerNb);
+	std::cout << "===== Graph Construction ======" << std::endl;
+	initCycles();
 	std::cout << "=== Combinatorial Optimizer ===" << std::endl;
 	shuffle();
 	std::cout << "===== Geometric Optimizer =====" << std::endl;
@@ -30,79 +35,59 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	glutLeaveMainLoop();
 }
 
-////////////////////////
-//
-//      INIT
-//
-////////////////////////
-
-GeneticAlgorithm::GeneticAlgorithm() {
-	_nbIndividuals = _nbChampion * _sonPerChamp;
+bool parallelize(int n, const auto &fun) {
+	std::atomic<int> K = 0;
+	std::atomic<bool> error = false;
+	const auto f = [&]() {
+		try {
+			int k;
+			while((k = K++) < n) fun(k);
+		} catch(const CSFCerror &e) {
+			error = true;
+			std::cerr << e.what() << std::endl;
+		}
+	};
+	const int T = std::min((int) Globals::_nbThread, n) - 1;
+	std::vector<std::thread> threads;
+	threads.reserve(T);
+	for(int t = 0; t < T; ++t) threads.emplace_back(f);
+	f();
+	for(std::thread &t : threads) t.join();
+	return error;
 }
 
 void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer) {
 	_layers.resize(nbLayer);
 	_nbReadyLayers = 0;
-
-	std::atomic<int> K = 0;
-	std::atomic<bool> error = false;
 	std::vector<bool> done(nbLayer, false);
-	const auto fun = [&]() {
-		try {
-			int k;
-			while((k = K++) < nbLayer) {
-				_layers[k].initLayer(str_format(fileName, k), k);
-				done[k] = true;
-				while(_nbReadyLayers < nbLayer && done[_nbReadyLayers]) ++ _nbReadyLayers;
-			}
-		} catch(const CSFCerror &e) {
-			error = true;
-			std::cerr << e.what() << std::endl;
-		}
-	};
-
-	const int T = std::min((int) Globals::_nbThread, nbLayer) - 1;
-	std::vector<std::thread> threads;
-	threads.reserve(T);
-	for(int t = 0; t < T; ++t) threads.emplace_back(fun);
-	fun();
-	for(std::thread &t : threads) t.join();
-	if(error) THROW_ERROR("An error occured in a thread of shape construction!");
+	if(parallelize(nbLayer, [&](int k) {
+		_layers[k].initLayer(str_format(fileName, k), k);
+		done[k] = true;
+		while(_nbReadyLayers < nbLayer && done[_nbReadyLayers]) ++ _nbReadyLayers;
+	})) THROW_ERROR("An error occured in a thread of shape construction!");
 	_nbReadyLayers = nbLayer;
 	Window::stopRefrech();
 	glutPostRedisplay();
-
-	K = 0;
-	const auto fun2 = [&]() {
-		try {
-			int k;
-			while((k = K++) < nbLayer) _layers[k].initCycle(k);
-		} catch(const CSFCerror &e) {
-			error = true;
-			std::cerr << e.what() << std::endl;
-		}
-	};
-
-	threads.clear();
-	threads.reserve(T);
-	for(int t = 0; t < T; ++t) threads.emplace_back(fun2);
-	fun2();
-	for(std::thread &t : threads) t.join();
-	if(error) THROW_ERROR("An error occured in a thread of graph construction!");
 }
 
-void GeneticAlgorithm::initLayers(const std::string &fileName)
-{
-	_layers.resize(1);
-	_layers[0].initLayer(fileName, 0);
-	_nbReadyLayers = 1;
-	glutPostRedisplay();
+void GeneticAlgorithm::initCycles() {
+	if(parallelize(_layers.size(), [&](int k) {
+		_layers[k].initCycle(k);
+		glutPostRedisplay();
+	})) THROW_ERROR("An error occured in a thread of graph construction!");
 }
 
-inline static std::vector<LocalOperator>::iterator bestPath(std::vector<LocalOperator>::iterator begin, std::vector<LocalOperator>::iterator end) {
+inline std::vector<LocalOperator>::iterator bestPath(std::vector<LocalOperator>::iterator begin, std::vector<LocalOperator>::iterator end) {
 	return std::min_element(begin, end, [](const LocalOperator &a, const LocalOperator &b) {
 		return a.getScore() < b.getScore();
 	});
+}
+
+inline void generateNewGeneration(std::vector<LocalOperator> &population) {
+	if(parallelize(population.size(), [&](int k) {
+		population[k].startShuffling(GeneticAlgorithm::_multiplier, k);		
+		std::cout << "resulted score = " << population[k].getScore() << std::endl;
+	})) THROW_ERROR("An error occured in a thread of combinatorial optimizer!");
 }
 
 void GeneticAlgorithm::shuffle() {
@@ -129,81 +114,22 @@ void GeneticAlgorithm::shuffle() {
 	}
 }
 
-void GeneticAlgorithm::optimize()
-{
-	std::atomic<int> K = 0;
-	std::vector<std::pair<int, int>> path_indices;
-	int S = 0;
-	for(const Layer &layer : _layers) S += layer._operators.size();
-	path_indices.reserve(S);
-	for(int i = 0; i < (int) _layers.size(); ++i)
-		for(int j = 0; j < (int) _layers[i]._operators.size(); ++j)
-			path_indices.emplace_back(i, j);
-
-
-	const auto fun = [&](bool mainThread) {
-		int k;
-		while((k = K++) < S) {
-			 const auto &[i, j] = path_indices[k];
-			_layers[i]._operators[j].optimize();
-			if(mainThread) glutPostRedisplay();
-		}
-	};
-
-	const int T = std::min((int) Globals::_nbThread, S) - 1;
-	std::vector<std::thread> threads;
-	threads.reserve(T);
-	for(int t = 0; t < T; ++t) threads.emplace_back(fun, false);
-	fun(true);
-	for(std::thread &t : threads) t.join();
-	glutPostRedisplay();
-}
-
-void GeneticAlgorithm::generateNewGeneration(std::vector<LocalOperator> &population)
-{
-	const int N = population.size();
-	std::atomic<int> K = 0;
-	const auto fun = [&]() {
-		int k;
-		while((k = K++) < N) {
-			population[k].startShuffling(_multiplier, k);		
-			std::cout << "resulted score = " << population[k].getScore() << std::endl;
-		}
-	};
-
-	const int T = std::min((int) Globals::_nbThread, N) - 1;
-	std::vector<std::thread> threads;
-	threads.reserve(T);
-	for(int t = 0; t < T; ++t) threads.emplace_back(fun);
-	fun();
-	for(std::thread &t : threads) t.join();
-}
-
-void GeneticAlgorithm::upgradeGeneration()
-{
-	std::cout << "upgrade" << std::endl;
-	_population.resize(_nbIndividuals);
-	for (int i = 0; i < _nbIndividuals; i++)
-		_population[i] = _champions[i / _sonPerChamp];
-
-	generateNewGeneration(_population);
-
-	for (int i = 0; i < _nbChampion; i++) {
-		std::vector<LocalOperator>::iterator it = bestPath(_population.begin() + (i * _sonPerChamp), _population.begin() + ((i + 1) * _sonPerChamp));
-		if(_champions[i].getScore() >= it->getScore()) _champions[i] = std::move(*it);
+// Return 2 times the number of common links
+int getDiff(const LocalOperator &champ, const LocalOperator &indiv) {
+	int score = 0;
+	const std::vector<std::vector<int>> &champLinks = champ.getLinks();
+	const std::vector<std::vector<int>> &indivLinks = indiv.getLinks();
+	for (int i = 0; i < (int) champLinks.size(); i++) {
+		const std::vector<int> &cLinks = champLinks[i];
+		const std::vector<int> &iLinks = indivLinks[i];
+		for(int j : iLinks)
+			if(std::find(cLinks.begin(), cLinks.end(), j) != cLinks.end())
+				++ score;
 	}
+	return score;
 }
 
-void GeneticAlgorithm::finishUpGeneration()
-{
-	std::cout << "finish" << std::endl;
-	for (auto &champ : _champions)
-		champ.updateState(true);
-	generateNewGeneration(_champions);
-}
-
-void GeneticAlgorithm::initChampions()
-{
+void GeneticAlgorithm::initChampions() {
 	_champions.clear();
 	_champions.resize(_nbChampion);
 
@@ -227,29 +153,39 @@ void GeneticAlgorithm::initChampions()
 	}
 }
 
-// Return 2 times the number of common links
-int GeneticAlgorithm::getDiff(const LocalOperator &champ, const LocalOperator &indiv) const
-{
-	int score = 0;
-	const std::vector<std::vector<int>> &champLinks = champ.getLinks();
-	const std::vector<std::vector<int>> &indivLinks = indiv.getLinks();
-	for (int i = 0; i < (int) champLinks.size(); i++)
-	{
-		const std::vector<int> &cLinks = champLinks[i];
-		const std::vector<int> &iLinks = indivLinks[i];
-		for(int j : iLinks)
-			if(std::find(cLinks.begin(), cLinks.end(), j) != cLinks.end())
-				++ score;
+void GeneticAlgorithm::upgradeGeneration() {
+	std::cout << "upgrade" << std::endl;
+	_population.resize(_nbIndividuals);
+	for (int i = 0; i < _nbIndividuals; i++)
+		_population[i] = _champions[i / _sonPerChamp];
+
+	generateNewGeneration(_population);
+
+	for (int i = 0; i < _nbChampion; i++) {
+		std::vector<LocalOperator>::iterator it = bestPath(_population.begin() + (i * _sonPerChamp), _population.begin() + ((i + 1) * _sonPerChamp));
+		if(_champions[i].getScore() >= it->getScore()) _champions[i] = std::move(*it);
 	}
-	return score;
 }
 
-int GeneticAlgorithm::getGen() const
-{
-	return _genNumber;
+void GeneticAlgorithm::finishUpGeneration() {
+	std::cout << "finish" << std::endl;
+	for (auto &champ : _champions)
+		champ.updateState(true);
+	generateNewGeneration(_champions);
 }
 
-int GeneticAlgorithm::getNbReadyLayers() const
-{
-	return _nbReadyLayers;
+void GeneticAlgorithm::optimize() {
+	std::vector<std::pair<int, int>> path_indices;
+	int S = 0;
+	for(const Layer &layer : _layers) S += layer._operators.size();
+	path_indices.reserve(S);
+	for(int i = 0; i < (int) _layers.size(); ++i)
+		for(int j = 0; j < (int) _layers[i]._operators.size(); ++j)
+			path_indices.emplace_back(i, j);
+
+	if(parallelize(S, [&](int k) {
+		const auto &[i, j] = path_indices[k];
+		_layers[i]._operators[j].optimize();
+		glutPostRedisplay();
+	})) THROW_ERROR("An error occured in a thread of geometric optimizer!");
 }
