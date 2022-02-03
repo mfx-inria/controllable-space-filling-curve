@@ -5,10 +5,9 @@
 #ifndef HAMILTON_OBJECTIVEFUNCTIONS_H
 #define HAMILTON_OBJECTIVEFUNCTIONS_H
 
-#include "graphics/Globals.h"
+#include "graphics/Shape.h"
 
-class ObjectiveFunctions
-{
+class ObjectiveFunctions {
 
 struct Edge {
 	int zone;

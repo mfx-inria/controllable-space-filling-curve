@@ -5,16 +5,15 @@
 #ifndef CVT_HPP
 #define CVT_HPP
 
+#include "graphics/Shape.h"
+#include "LBFGS/clipper.hpp"
+
 #include <boost/polygon/voronoi.hpp>
 #include <Eigen/Core>
-
-#include "graphics/Globals.h"
-#include "LBFGS/clipper.hpp"
 
 typedef glm::vec<2, double> Vec2;
 typedef std::pair<Vec2, Vec2> Segment;
 typedef boost::polygon::voronoi_diagram<double> VD;
-
 
 struct self_intersection_error : public std::exception {
 	const std::string m_msg;
@@ -23,7 +22,6 @@ struct self_intersection_error : public std::exception {
 		{}
 	const char* what() const throw() { return m_msg.c_str(); }
 };
-
 
 //////////////////
 //

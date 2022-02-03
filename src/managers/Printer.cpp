@@ -56,12 +56,9 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
 
     int layerNb = 1;
     // foreach layer
-    for (const auto &layer : layers)
-    {
+    for(const auto &layer : layers) {
         // foreach shape in layer
-        for (int i = 0; i < (int) layer._operators.size(); i++)
-        {
-            if(!layer._operators[i].isSucces()) continue;
+        for(int i = 0; i < (int) layer._operators.size(); i++) {
             auto [points, zones] = layer._operators[i].getFinal();
             int nb = points.size();
             std::cout << "nb = " << nb << std::endl;

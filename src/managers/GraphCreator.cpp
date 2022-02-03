@@ -3,269 +3,10 @@
 //
 
 #include "managers/GraphCreator.h"
-#define NANOSVG_IMPLEMENTATION		// Expands implementation
-#include "tools/nanosvg.h"
 #include "LBFGS/cvt.hpp"
-#include "graphics/DirectionField.h"
 
 #include <fstream>
 #include <random>
-
-// Return the index of the nearest objective from color
-OBJECTIVE getNearestObjective(unsigned int color) {
-	glm::vec3 rgbCol((color & 0xff) / 255.f, ((color >> 8) & 0xff) / 255.f, ((color >> 16) & 0xff) / 255.f);
-	float minDiff = std::numeric_limits<float>::max();
-	int index = -1;
-	for(int i = 0; i < (int) COLORS.size(); i++) {
-		float diff = glm::distance(rgbCol, COLORS[i]);
-		if(diff < minDiff) {
-			minDiff = diff;
-			index = i;
-		}
-	}
-	return (OBJECTIVE) index;
-}
-
-// Construct shapes from SVG
-void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
-	shapes.clear();
-	std::vector<Shape> holes;
-	struct NSVGimage* image;
-	image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
-	if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
-	for(NSVGshape *shape = image->shapes; shape != NULL; shape = shape->next) {
-		std::vector<Shape> shapesAdd, holesAdd;
-		float maxArea = 0.f;
-		for(NSVGpath *path = shape->paths; path != NULL; path = path->next) {
-			Shape polygon;
-			polygon._points.reserve(path->npts/3+1);
-			for (int i = 0; i < path->npts; i += 3) {
-				float* p = &path->pts[i*2];
-				polygon._points.emplace_back(p[0], p[1]);
-			}
-			polygon._area = Globals::polygonArea(polygon._points);
-			if(std::abs(polygon._area) > std::abs(maxArea)) maxArea = polygon._area;
-
-			if(shape->fill.type) polygon._objcetive = getNearestObjective(shape->fill.color);
-			if(shape->stroke.type) polygon._printColor = shape->stroke.color;
-			if(polygon._area > 0.f) holesAdd.emplace_back(std::move(polygon));
-			else {
-				polygon._area = -polygon._area;
-				shapesAdd.emplace_back(std::move(polygon));
-			}
-		}
-
-		if(maxArea > 0.f) { // swap shapes and hole if needed
-			std::swap(holesAdd, shapesAdd);
-			for(Shape &shape : shapesAdd) std::reverse(shape._points.begin(), shape._points.end());
-			for(Shape &hole : holesAdd) std::reverse(hole._points.begin(), hole._points.end());
-		}
-
-		// order shapes by area, from small to big
-		sort(shapesAdd.begin(), shapesAdd.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
-
-		// put the hole inside the shapes
-		for(Shape &hole : holesAdd)
-			for(Shape &shapeTmp: shapesAdd)
-				if(Globals::isInPoly(shapeTmp._points, hole._points[0])) {
-					shapeTmp._holes.emplace_back(std::move(hole._points));
-					break;
-				}
-
-		shapes.insert(shapes.end(), std::make_move_iterator(shapesAdd.begin()), std::make_move_iterator(shapesAdd.end()));
-	}
-	sort(shapes.begin(), shapes.end(), [&](const Shape &a, const Shape &b) { return a._area < b._area; });
-	nsvgDelete(image);
-}
-
-// Return the diagonal of the smallest axis-aligned rectangle containing shapes
-inline float getDiag(const std::vector<Shape> &shapes) {
-	Box<float> box;
-	for(const Shape &s : shapes) for(const glm::vec2 &p : s._points) box.update(p);
-	return box.diag();
-}
-
-// Retrun true if p is at a distance < sqrt(eps2) from cycle 
-inline bool isNear(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
-	for(int i = 1; i < (int) cycle.size(); ++i) {
-		const glm::vec2 v = cycle[i-1] - cycle[i];
-		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
-	}
-	return false;
-}
-
-// Retrun true if p is at a distance < sqrt(eps2) from shape border 
-inline bool isNear(const Shape &shape, const glm::vec2 &p, float eps2=1e-10f) {
-	if(isNear(shape._points, p, eps2)) return true;
-	for(const std::vector<glm::vec2> &hole : shape._holes)
-		if(isNear(hole, p, eps2)) return true;
-	return false;
-}
-
-// Find objective zones and regroup them inside their shapes
-std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, float eps) {
-	// Make black shapes first
-	int B = 0;
-	for(int i = 0; i < (int) shapes.size(); ++i)
-		if(shapes[i]._objcetive == NOTHING)
-			std::swap(shapes[B++], shapes[i]);
-
-	// Fuse black shapes with inner shapes
-	std::vector<std::vector<Shape>> objZones(B);
-	for(int i = 0; i < B; ++i) {
-		int j = B;
-		while(j < (int) shapes.size()) {
-			if(shapes[i].isInside(shapes[j]._points[0]) || isNear(shapes[i], shapes[j]._points[0], eps*eps)) {
-				objZones[i].emplace_back(std::move(shapes[j]));
-				if(j+1 != (int) shapes.size()) shapes[j] = std::move(shapes.back());
-				shapes.pop_back();
-			} else ++j;
-		}
-	}
-	objZones.resize(shapes.size());
-	for(int i = 0; i < (int) shapes.size(); ++i)
-		if(objZones[i].empty())
-			objZones[i].emplace_back(shapes[i]);
-	for(int i = B; i < (int) shapes.size(); ++i) shapes[i]._objcetive = NOTHING;
-
-	// sort borders
-	std::vector<uint> perm(shapes.size());
-	for(uint i = 0; i < perm.size(); ++i) perm[i] = i;
-	std::sort(perm.begin(), perm.end(), [&](uint i, uint j) { return shapes[i]._area > shapes[j]._area; });
-	for(uint i = 0; i < perm.size(); ++i) {
-		uint j = i;
-		while(perm[j] != i) {
-			uint k = perm[j];
-			std::swap(shapes[j], shapes[k]);
-			std::swap(objZones[j], objZones[k]);
-			perm[j] = j;
-			j = k;
-		}
-		perm[j] = j;
-	}
-
-	// sort zones
-	for(std::vector<Shape> &zones : objZones)
-		std::sort(zones.begin(), zones.end(), [](const Shape &a, const Shape &b) { return a._area > b._area; });
-
-	// remove holes area
-	for(std::vector<Shape> &zones : objZones)
-		for(Shape &zone : zones)
-			for(const std::vector<glm::vec2> &hole : zone._holes)
-				zone._area -= Globals::polygonArea(hole);
-	for(Shape &b : shapes)
-		for(const std::vector<glm::vec2> &hole : b._holes)
-			b._area -= Globals::polygonArea(hole);
-
-	return objZones;
-}
-
-// Merge adjacent objectives zones with same print color together
-std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, float eps) {
-	std::vector<std::vector<Shape>> colorZones;
-	colorZones.reserve(shapes.size());
-	const float eps2 = eps*eps;
-	for(const std::vector<Shape> &zones : shapes) {
-		// Reorder to have consecutive stroke colors
-		std::vector<int> perm(zones.size());
-		for(int i = 0; i < (int) perm.size(); ++i) perm[i] = i;
-		std::sort(perm.begin(), perm.end(), [&](int i, int j) { return zones[i]._printColor < zones[j]._printColor; });
-		colorZones.emplace_back();
-
-		int Z0 = 0;
-
-		while(Z0 < (int) perm.size()) {
-			int Z1 = Z0+1;
-			while(Z1 < (int) perm.size() && zones[perm[Z1]]._printColor == zones[perm[Z0]]._printColor) ++ Z1;
-
-			// Create graph
-			const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
-			std::map<glm::vec2, int, decltype(vec2Comp)> map(vec2Comp);
-			Graph graph;
-			while(Z0 < Z1) {
-				const Shape &zone = zones[perm[Z0++]];
-				const auto addCycle = [&](const std::vector<glm::vec2> &cycle) {
-					int prev = -1;
-					for(const glm::vec2 &p : cycle) {
-						std::map<glm::vec2, int>::iterator it = map.lower_bound(p);
-						int idx=-1;
-						float xmin = p.x-eps, xmax = p.x+eps;
-						for(auto it2 = it; it2 != map.end() && it2->first.x <= xmax; ++it2)
-							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
-						if(idx == -1) for(auto it2 = it; it2 != map.begin() && (--it2)->first.x >= xmin;)
-							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
-						if(idx == -1) {
-							idx = graph._points.size();
-							graph._points.emplace_back(p);
-							graph._originalLinks.emplace_back();
-							map.emplace_hint(it, p, idx);
-						}
-						if(prev >= 0) graph._originalLinks[prev].push_back(idx);
-						prev = idx;
-					}
-				};
-				addCycle(zone._points);
-				for(const std::vector<glm::vec2> &hole : zone._holes) addCycle(hole);
-			}
-
-			// update links
-			for(int i = 0; i < (int) graph._points.size(); ++i) {
-				int k = 0;
-				while(k < (int) graph._originalLinks[i].size()) {
-					int j = graph._originalLinks[i][k];
-					std::vector<int>::iterator it = std::find(graph._originalLinks[j].begin(), graph._originalLinks[j].end(), i);
-					if(it == graph._originalLinks[j].end()) ++k;
-					else {
-						graph._originalLinks[i][k] = graph._originalLinks[i].back();
-						graph._originalLinks[i].pop_back();
-						*it = graph._originalLinks[j].back();
-						graph._originalLinks[j].pop_back();
-					}
-				}
-			}
-
-			// Create pathes
-			std::vector<bool> toSee(graph._points.size(), true);
-			std::vector<std::vector<glm::vec2>> holes;
-			size_t start = colorZones.back().size();
-			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !graph._originalLinks[i].empty()) {
-					std::vector<glm::vec2> path;
-					int j = i;
-					do {
-						toSee[j] = false;
-						path.push_back(graph._points[j]);
-						if(graph._originalLinks[j].size() != 1) THROW_ERROR("Failed to merge color zones");
-						j = graph._originalLinks[j][0];
-					} while(j != i);
-					path.push_back(path[0]);
-					float area = Globals::polygonArea(path);
-					if(area > 0.f) holes.emplace_back(std::move(path));
-					else {
-						colorZones.back().emplace_back();
-						colorZones.back().back()._points = std::move(path);
-						colorZones.back().back()._area = -area;
-						colorZones.back().back()._printColor = zones[perm[Z0-1]]._printColor;
-					}
-				}
-
-			// Add holes
-			std::sort(colorZones.back().begin() + start, colorZones.back().end(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
-			for(std::vector<glm::vec2> &hole : holes)
-				for(size_t i = start; i < colorZones.back().size(); ++i)
-					if(Globals::isInPoly(colorZones.back()[i]._points, hole[0])) {
-						colorZones.back()[i]._holes.emplace_back(std::move(hole));
-						break;
-					}
-		}
-		// sort and remove area holes
-		std::sort(colorZones.back().rbegin(), colorZones.back().rend(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
-		for(Shape &zone : colorZones.back())
-			for(const std::vector<glm::vec2> &hole : zone._holes)
-				zone._area -= Globals::polygonArea(hole);
-
-	}
-	return colorZones;
-}
 
 // If the point is on the border we pushed it inside the shape and return true
 bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
@@ -300,11 +41,11 @@ bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
 	return false;
 }
 
-void remove2coPoints(Shape &border, Graph &graph) {
+void remove2coPoints(const Shape &border, Graph &graph) {
 	// Stack containing points to remove
 	std::vector<int> stack;
 	for (int i = 0; i < (int) graph._points.size(); ++i)
-		if(graph._originalLinks[i].size() < 3 && !isNear(border, graph._points[i]))
+		if(graph._originalLinks[i].size() < 3 && !border.isNear(graph._points[i]))
 			stack.push_back(i);
 
 	// Remove loop (update links)
@@ -320,7 +61,7 @@ void remove2coPoints(Shape &border, Graph &graph) {
 				else {
 					*it = link2.back();
 					link2.pop_back();
-					if(link2.size() < 3 && !isNear(border, graph._points[link[0]])) stack.push_back(link[0]);
+					if(link2.size() < 3 && !border.isNear(graph._points[link[0]])) stack.push_back(link[0]);
 				}
 				std::swap(link[0], link[1]);
 			}
@@ -329,7 +70,7 @@ void remove2coPoints(Shape &border, Graph &graph) {
 			std::vector<int>::iterator it = std::find(link2.begin(), link2.end(), i);
 			*it = link2.back();
 			link2.pop_back();
-			if(link2.size() < 3 && !isNear(border, graph._points[link[0]])) stack.push_back(link[0]);
+			if(link2.size() < 3 && !border.isNear(graph._points[link[0]])) stack.push_back(link[0]);
 		}
 		link.clear();
 	}
@@ -364,68 +105,37 @@ void remove2coPoints(Shape &border, Graph &graph) {
 }
 
 // Create Graph from an SVG file.
-void GraphCreator::graphFromSvg(const std::string &fileName,
-								std::vector<Shape> &shapes,
-								std::vector<std::vector<Shape>> &objZones,
-								std::vector<std::vector<Shape>> &colorZones,
-								std::vector<Graph> &graphs,
-								int layerIndex)
-{
-	graphs.clear();
-	getShapeFromSVG(fileName, shapes);
-	const float eps = 1e-5f * getDiag(shapes);
-	objZones = regroupObjZones(shapes, eps);
-	colorZones = mergeColorZones(objZones, eps);
-
-	// Compute triangulations
-	for(auto shapes : {&objZones, &colorZones})
-		for(std::vector<Shape> &zones : *shapes)
-			for(Shape &zone : zones)
-				zone.triangulate();
-
-	DirectionField::initVectorField(objZones, shapes, layerIndex);
-
+bool GraphCreator::graphFromSvg(const Shape &shape, Graph &graph, int layerIndex) {
 	std::uniform_real_distribution<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
 	std::mt19937 gen(Globals::_seed + layerIndex);
-	for(int i = 0; i < (int) shapes.size(); ++i) {
-		Box<float> box;
-		for (const glm::vec2 &point : shapes[i]._points) box.update(point);
-		std::vector<glm::vec2> centroids;
-		for(float x = box.x0; x <= box.x1; x += Globals::_d) {
-			int j = 1;
-			for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
-				glm::vec2 point(x, y);
-				if((++j)&1) point.x -= .5f * Globals::_d;
-				point.x += dis(gen);
-				point.y += dis(gen);
-				if(shapes[i].isInside(point)) centroids.push_back(point);
-			}
-		}
-		if(centroids.size() < 3) {
-			if(i+1 != (int) shapes.size()) {
-				shapes[i] = std::move(shapes.back());
-				objZones[i] = std::move(objZones.back());
-				colorZones[i] = std::move(colorZones.back());
-			}
-			shapes.pop_back();
-			objZones.pop_back();
-			colorZones.pop_back();
-			-- i;
-			continue;
-		}
-
-		SegmentCVT cvt(&shapes[i], box, layerIndex);
-		graphs.push_back(cvt.optimize(centroids));
-
-		// remove 2co
-		remove2coPoints(shapes[i], graphs.back());
-
-		// push points inside
-		for(glm::vec2 &p : graphs.back()._points) {
-			if(push_inside(shapes[i]._points, p)) continue;
-			for(const std::vector<glm::vec2> &in : shapes[i]._holes)
-				if(push_inside(in, p)) break;
+	Box<float> box;
+	for (const glm::vec2 &point : shape._points) box.update(point);
+	std::vector<glm::vec2> centroids;
+	for(float x = box.x0; x <= box.x1; x += Globals::_d) {
+		int j = 1;
+		for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
+			glm::vec2 point(x, y);
+			if((++j)&1) point.x -= .5f * Globals::_d;
+			point.x += dis(gen);
+			point.y += dis(gen);
+			if(shape.isInside(point)) centroids.push_back(point);
 		}
 	}
+	if(centroids.size() < 3) return false;
+
+	SegmentCVT cvt(&shape, box, layerIndex);
+	graph = cvt.optimize(centroids);
+
+	// remove 2co
+	remove2coPoints(shape, graph);
+
+	// push points inside
+	for(glm::vec2 &p : graph._points) {
+		if(push_inside(shape._points, p)) continue;
+		for(const std::vector<glm::vec2> &in : shape._holes)
+			if(push_inside(in, p)) break;
+	}
+
+	return true;
 }
 

@@ -1,8 +1,5 @@
-#include "graphics/Globals.h"
+#include "graphics/Shape.h"
 
-#include <glm/vec2.hpp>
-
-#include <vector>
 #include <future>
 
 class DirectionField {

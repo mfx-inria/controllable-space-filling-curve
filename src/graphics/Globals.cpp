@@ -2,12 +2,7 @@
 // Created by adrien_bedel on 18/11/19.
 //
 
-#include "graphics/Globals.h"
-#include "graphics/Window.h"
 #include "graphics/DirectionField.h"
-
-#include <queue>
-#include <iostream>
 
 ////////////////////////
 //
@@ -78,33 +73,6 @@ bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 
 	float t;
 	return intersect(a, b, c, d, t);
 }
-
-void Globals::getInter(const glm::vec2 &a, const glm::vec2 &b, const Shape &shape, std::vector<float> &ts) {
-	float t;
-	for(int i = 1; i < (int) shape._points.size(); ++i)
-		if(intersect(a, shape._points[i-1], b, shape._points[i], t))
-			ts.push_back(t);
-	for(const std::vector<glm::vec2> &hole : shape._holes)
-		for(int i = 1; i < (int) hole.size(); ++i)
-			if(intersect(a, hole[i-1], b, hole[i], t))
-				ts.push_back(t);
-}
-
-//////////////////
-//
-//      SHAPE
-//
-//////////////////
-
-// is p inside of _points
-bool Shape::isInside(const glm::vec2 &p) const {
-	if(!Globals::isInPoly(_points, p)) return false;
-	for(const std::vector<glm::vec2> &hole : _holes)
-		if(Globals::isInPoly(hole, p))
-			return false;
-	return true;
-}
-
 
 //////////////////
 //

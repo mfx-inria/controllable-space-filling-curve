@@ -19,19 +19,15 @@ const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
         {{0, 2}, {1, 3}}                    // zigzag cand
 };
 
-LocalOperator::LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, Graph &graph, int layerIndex)
-        : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones)
-{
-    _gen = std::default_random_engine(Globals::_seed);
+LocalOperator::LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex)
+        : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones), _gen(std::default_random_engine(Globals::_seed)) {}
+
+void LocalOperator::setGraph(Graph &graph) {
     Matching m(_border, graph);
-    _succes = m._succes;
     _points = std::move(m._points);
-
     computeZone();
-
     _originalLinks = std::move(m._originalLinks);
-    if(_succes) _cLinks = std::move(m._cLinks);
-    else _cLinks.resize(_originalLinks.size());
+    _cLinks = std::move(m._cLinks);
 }
 
 void LocalOperator::updateState(bool state) {
@@ -381,10 +377,6 @@ std::pair<float, std::vector<int>> LocalOperator::checkZigZag(const std::vector<
 //     GETTERS
 //
 ///////////////////////
-
-bool LocalOperator::isSucces() const {
-    return _succes;
-}
 
 const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>& LocalOperator::getFinal() const {
     return _final;

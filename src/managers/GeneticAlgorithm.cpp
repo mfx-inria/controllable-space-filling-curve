@@ -14,7 +14,6 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	// Algorithm
 	std::cout << "===== Graph Construction ======" << std::endl;
 	initLayers(fileName, layerNb);
-	Window::stopRefrech();
 	std::cout << "=== Combinatorial Optimizer ===" << std::endl;
 	shuffle();
 	std::cout << "===== Geometric Optimizer =====" << std::endl;
@@ -55,7 +54,6 @@ void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer) {
 				_layers[k].initLayer(str_format(fileName, k), k);
 				done[k] = true;
 				while(_nbReadyLayers < nbLayer && done[_nbReadyLayers]) ++ _nbReadyLayers;
-				glutPostRedisplay();
 			}
 		} catch(const CSFCerror &e) {
 			error = true;
@@ -69,9 +67,28 @@ void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer) {
 	for(int t = 0; t < T; ++t) threads.emplace_back(fun);
 	fun();
 	for(std::thread &t : threads) t.join();
-	if(error) THROW_ERROR("An error occured in a thread of graph construction!");
+	if(error) THROW_ERROR("An error occured in a thread of shape construction!");
 	_nbReadyLayers = nbLayer;
+	Window::stopRefrech();
 	glutPostRedisplay();
+
+	K = 0;
+	const auto fun2 = [&]() {
+		try {
+			int k;
+			while((k = K++) < nbLayer) _layers[k].initCycle(k);
+		} catch(const CSFCerror &e) {
+			error = true;
+			std::cerr << e.what() << std::endl;
+		}
+	};
+
+	threads.clear();
+	threads.reserve(T);
+	for(int t = 0; t < T; ++t) threads.emplace_back(fun2);
+	fun2();
+	for(std::thread &t : threads) t.join();
+	if(error) THROW_ERROR("An error occured in a thread of graph construction!");
 }
 
 void GeneticAlgorithm::initLayers(const std::string &fileName)
@@ -91,7 +108,7 @@ inline static std::vector<LocalOperator>::iterator bestPath(std::vector<LocalOpe
 void GeneticAlgorithm::shuffle() {
 	for (Layer &layer : _layers) {
 		for(LocalOperator &op : layer._operators) {
-			if(!op.isSucces() || op.getPoints().size() < 7) continue;
+			if(op.getPoints().size() < 7) continue;
 
 			_population.clear();
 			_population.assign(_nbIndividuals, op);

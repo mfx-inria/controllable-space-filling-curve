@@ -12,22 +12,21 @@
 class LocalOperator : public ObjectiveFunctions {
 private:
 	const static std::vector<std::vector<std::pair<int, int>>> 	_segments;
-	std::default_random_engine									_gen;
 	unsigned int												_iter = 0;
-	bool														_succes;
 	bool														_isEnd = false;
 	std::vector<int>											_index;
 	std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>	_final;
 	std::vector<Shape>											_strokeZones;
+	std::default_random_engine									_gen;
 
 public:
 	LocalOperator() = default;
-	LocalOperator(std::vector<Shape> &, std::vector<Shape> &&, Shape &, Graph &, int);
+	LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex);
+	void setGraph(Graph &graph);
 
 	void                            updateState(bool);
 	void                            startShuffling(int, int);
 	void                            optimize();
-	bool                            isSucces() const;
 	const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>&    getFinal() const;
 	const std::vector<Shape>&                                           getStrokeZones() const;
 

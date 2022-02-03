@@ -691,13 +691,13 @@ void Smoother::construct_voro(const Eigen::VectorXd &x) {
 		box.update(a);
 		std::vector<float> ts;
 		if(k >= 0) {
-			Globals::getInter(a, b, (*_strokeZones)[k], ts);
+			(*_strokeZones)[k].getInter(a, b, ts);
 			if(ts.empty()) {
 				_paths[k].emplace_back(i, 0., 1.);
 				continue;
 			}
 			ts.push_back(0.f);
-		} else Globals::getInter(a, b, (*_strokeZones)[k = 0], ts);
+		} else (*_strokeZones)[k = 0].getInter(a, b, ts);
 		int l = k, k2 = -1;
 		while(true) {
 			if(ts.size()&1) {
@@ -711,7 +711,7 @@ void Smoother::construct_voro(const Eigen::VectorXd &x) {
 			do {
 				l = (l+1) % _strokeZones->size();
 				if(l == k) break;
-				Globals::getInter(a, b, (*_strokeZones)[l], ts);
+				(*_strokeZones)[l].getInter(a, b, ts);
 			} while(ts.empty());
 			if(l == k) break;
 		}
@@ -786,7 +786,7 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
 					prev_inside[i] = true;
 					ts.push_back(0.f);
 				}
-				Globals::getInter(a, b, zone, ts);
+				zone.getInter(a, b, ts);
 				if(ts.empty()) continue;
 				std::sort(ts.begin(), ts.end());
 				if(ts.size()&1) ts.push_back(1.f);

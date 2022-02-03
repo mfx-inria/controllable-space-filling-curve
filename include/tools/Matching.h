@@ -5,13 +5,12 @@
 #ifndef HAMILTON_MATCHING_H
 #define HAMILTON_MATCHING_H
 
-#include "graphics/Globals.h"
+#include "graphics/Shape.h"
 #include "tools/Union.h"
 
 #include <memory>
 
-class Tree
-{
+class Tree {
 
 public:
     int _nodeIdx;
@@ -25,10 +24,8 @@ public:
 
 };
 
-class Matching
-{
+class Matching {
 public:
-    bool    _succes = true;
     int     _score = 0;
     int     _nbConnectedPoints;
 
@@ -39,7 +36,7 @@ public:
 
 private:
     void    removeUnused(const Shape &);
-    bool    checkInit();
+    void    checkInit();
     void    switchLink();
     void    augment();
     void    augmentPath(int);
@@ -47,7 +44,6 @@ private:
     void    createOriLink(int, int);
     void    removeLink(int, int);
     void    removeOriLink(int, int);
-    void    print();
     void    initUnion();
     bool    isLinked(const std::vector<int> &, int );
     void    match();

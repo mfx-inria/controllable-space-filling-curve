@@ -68,7 +68,7 @@ void ObjectiveFunctions::calculateScore() {
         for(int j : _originalLinks[i]) {
             _segments[i].emplace_back();
             std::vector<float> ts;
-            Globals::getInter(_points[i], _points[j], _zones[k], ts);
+            _zones[k].getInter(_points[i], _points[j], ts);
             if(ts.empty()) {
                 if(IS_VECTOR(_zones[k]._objcetive))
                     createEdgeVec(_points[i], _points[j], _segments[i].back().vecW, _segments[i].back().vecS);
@@ -97,7 +97,7 @@ void ObjectiveFunctions::calculateScore() {
                     l = (l+1) % _zones.size();
                     if(l == k) break;
                     if(_zones[l]._objcetive != NOTHING)
-                        Globals::getInter(_points[i], _points[j], _zones[l], ts);
+                        _zones[l].getInter(_points[i], _points[j], ts);
                 } while(ts.empty());
                 if(l == k) break;
             }

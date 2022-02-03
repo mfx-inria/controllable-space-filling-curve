@@ -16,10 +16,11 @@ set(CMAKE_CXX_FLAGS "-std=c++20 -pthread -O3 -Wall")
 
 add_executable(${PROJECT_NAME}
 	src/main.cpp
-	src/graphics/Globals.cpp
-	src/graphics/Window.cpp
-	src/graphics/triangulate.cpp
 	src/graphics/DirectionField.cpp
+	src/graphics/Globals.cpp
+	src/graphics/Shape.cpp
+	src/graphics/triangulate.cpp
+	src/graphics/Window.cpp
 	src/LBFGS/clipper.cpp
 	src/LBFGS/cvt.cpp
 	src/localAlgo/LocalOperator.cpp

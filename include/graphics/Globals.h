@@ -41,22 +41,6 @@ public:
 	static glm::vec2 getCellCenter(const std::vector<int> &, const std::vector<glm::vec2> &);
 };
 
-// Shape containing cycles
-class Shape {
-public:
-	float                               _area;
-	OBJECTIVE                           _objcetive = NOTHING;
-	int                                 _printColor = 0;
-
-	std::vector<glm::vec2>              _points;
-	std::vector<std::vector<glm::vec2>> _holes;
-	std::vector<std::vector<uint>>      _triangles;
-public:
-	Shape(){}
-	Shape(const std::vector<glm::vec2> &pts) { _points = pts; }
-	bool isInside(const glm::vec2 &p) const;
-	void triangulate();
-};
 
 // Class containing constants and some geometry primitives
 class Globals {
@@ -84,7 +68,6 @@ public:
 	static bool		isInPoly(const std::vector<glm::vec2> &, const glm::vec2 &);
 	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
 	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, float &);
-	static void		getInter(const glm::vec2 &, const glm::vec2 &, const Shape &, std::vector<float> &);
 };
 
 //===============

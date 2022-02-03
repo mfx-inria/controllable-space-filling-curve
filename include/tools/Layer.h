@@ -6,23 +6,16 @@
 #define HAMILTON_LAYER_H
 
 #include "localAlgo/LocalOperator.h"
-#include <string>
 
-class Layer
-{
-private:
-    float _initialScore;
-
+class Layer {
 public:
     std::vector<LocalOperator> _operators;
 
 public:
     Layer() = default;
 
-    void initLayer(const std::string &, int);
-
-    float getScore() const;
-    float getInitialScore() const;
+    void initLayer(const std::string &fileName, int layerIndex);
+	void initCycle(int layerIndex);
 };
 
 #endif //HAMILTON_LAYER_H
