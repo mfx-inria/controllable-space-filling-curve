@@ -4,6 +4,7 @@
 #include "tools/nanosvg.h"
 
 #include <map>
+#include <algorithm>
 
 // Retrun true if p is at a distance < sqrt(eps2) from cycle 
 inline bool isNearAux(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {

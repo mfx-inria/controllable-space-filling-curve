@@ -11,8 +11,7 @@ include_directories(include/)
 include_directories(include/LBFGS)
 include_directories(${Boost_INCLUDE_DIR})
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-std=c++20 -pthread -O3 -Wall")
+set(CMAKE_CXX_FLAGS "-Wall")
 
 add_executable(${PROJECT_NAME}
 	src/main.cpp

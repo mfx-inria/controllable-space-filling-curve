@@ -35,7 +35,8 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	glutLeaveMainLoop();
 }
 
-bool parallelize(int n, const auto &fun) {
+template<typename F>
+bool parallelize(int n, const F &fun) {
 	std::atomic<int> K = 0;
 	std::atomic<bool> error = false;
 	const auto f = [&]() {
