@@ -8,7 +8,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <filesystem>
 
 void getImageSize(const std::string &fileName, float &width, float &heihgt) {
 	struct NSVGimage* image;
@@ -25,9 +24,9 @@ int main(int argc, char** argv) {
 		std::cerr << "Error: this programm needs at least one argument: the path to a txt file describing the input and the parameters used. Other arguments will be sent to glut." << std::endl;
 		exit(1);
 	}
-	std::filesystem::path path(argv[1]);
+	std::string path(argv[1]);
 	std::ifstream ifs(path);
-	if(!ifs) THROW_ERROR("can't read inpute file: " + path.string());
+	if(!ifs) THROW_ERROR("can't read inpute file: " + path);
 	std::string fileName = "no svg path given";
 	int layerNb = 1;
 	while(ifs) {
@@ -35,7 +34,11 @@ int main(int argc, char** argv) {
 		std::getline(ifs, line);
 		std::istringstream iss(line);
 		if(iss >> var && iss >> val) {
-			if(var == "path") fileName = path.parent_path().append(val);
+			if(var == "path") {
+				std::size_t i = path.find_last_of("\\/");
+				if(i == path.npos) fileName = val;
+				else fileName = path.substr(0, i+1) + val;
+			}
 			else if(var == "d") Globals::_d = std::stof(val);
 			else if(var == "layerNb") layerNb = std::stoi(val);
 			else if(var == "seed") Globals::_seed = std::stoul(val);
