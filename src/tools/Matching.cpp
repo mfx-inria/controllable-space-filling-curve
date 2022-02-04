@@ -6,13 +6,12 @@
 
 #include <algorithm>
 #include <set>
+#include <random>
 
 Tree::Tree(int nodeIdx, bool needEdge, std::shared_ptr<Tree> parent = nullptr)
-		: _nodeIdx(nodeIdx), _needEdge(needEdge), _parent(parent)
-{ }
+		: _nodeIdx(nodeIdx), _needEdge(needEdge), _parent(parent) {}
 
-bool Tree::operator==(int nodeIdx) const
-{
+bool Tree::operator==(int nodeIdx) const {
 	return (this->_nodeIdx == nodeIdx);
 }
 
@@ -360,30 +359,24 @@ void Matching::match() {
 	switchLink();
 }
 
-bool Matching::isLinked(const std::vector<int> &links, int node)
-{
+bool Matching::isLinked(const std::vector<int> &links, int node) {
 	return std::find(links.begin(), links.end(), node) != links.end();
 }
 
-void Matching::switchLink()
-{
+void Matching::switchLink() {
 	_nbConnectedPoints = 0;
-	for (int i = 0; i < (int) _cLinks.size(); i++)
-	{
-		if (_originalLinks[i].size() == 2)
-		{
-			if (_cLinks[i].size() == 2)
+	for(int i = 0; i < (int) _cLinks.size(); i++) {
+		if(_originalLinks[i].size() == 2) {
+			if(_cLinks[i].size() == 2)
 				_cLinks[i].clear();
 			else {
 				_cLinks[i] = _originalLinks[i];
 				++ _nbConnectedPoints;
 			}
-		}
-		else
-		{
+		} else {
 			int j = _cLinks[i][0];
 			_cLinks[i].clear();
-			for (int link : _originalLinks[i])
+			for(int link : _originalLinks[i])
 				if(link != j)
 					_cLinks[i].push_back(link);
 			++ _nbConnectedPoints;
@@ -395,9 +388,9 @@ void Matching::augment() {
 	std::vector<int> order(_points.size());
 	for(int i = 0; i < (int) order.size(); ++i) {
 		order[i] = i;
-		std::random_shuffle(_originalLinks[i].begin(), _originalLinks[i].end());
+		std::shuffle(_originalLinks[i].begin(), _originalLinks[i].end(), std::mt19937(Globals::_seed));
 	}
-	std::random_shuffle(order.begin(), order.end());
+	std::shuffle(order.begin(), order.end(), std::mt19937(Globals::_seed));
 	for(int i : order)
 		if(_cLinks[i].empty() && _originalLinks[i].size() == 3)
 			augmentPath(i);

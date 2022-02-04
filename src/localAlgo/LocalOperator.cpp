@@ -20,7 +20,7 @@ const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
 };
 
 LocalOperator::LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex)
-        : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones), _gen(std::default_random_engine(Globals::_seed)) {}
+        : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones), _gen(std::mt19937(Globals::_seed)) {}
 
 void LocalOperator::setGraph(Graph &graph) {
     Matching m(_border, graph);
@@ -128,18 +128,18 @@ void LocalOperator::computeIndex(int start = 0, int end = 0) {
 }
 
 void LocalOperator::startShuffling(int multiplier, int champ) {
-    _gen = std::default_random_engine(Globals::_seed + champ);
+    _gen = std::mt19937(Globals::_seed + champ);
     computeIndex();
     std::vector<int> order(_points.size());
     for(int i = 0; i < (int) order.size(); ++i) order[i] = i;
     int N = order.size();
-    std::uniform_real_distribution<> dis(0, N);
+    std::uniform_int_distribution<int> dis(0, N-1);
     bool pred_isEnd = _isEnd;
     for(int s = 0; s < 2; ++s) {
         if(s) updateState(true);
         int nIter = multiplier * _points.size() * (1 + pred_isEnd);
         for(int i = 0; i < nIter; i++) {
-            int random0 = static_cast<int>(dis(_gen));
+            int random0 = dis(_gen);
             int random = order[random0];
 
             if(checkPaperOp(random)) N = order.size();

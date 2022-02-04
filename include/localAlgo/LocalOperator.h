@@ -17,33 +17,29 @@ private:
 	std::vector<int>											_index;
 	std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>	_final;
 	std::vector<Shape>											_strokeZones;
-	std::default_random_engine									_gen;
+	std::mt19937												_gen;
 
 public:
 	LocalOperator() = default;
 	LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex);
 	void setGraph(Graph &graph);
 
-	void                            updateState(bool);
-	void                            startShuffling(int, int);
-	void                            optimize();
-	const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>&    getFinal() const;
-	const std::vector<Shape>&                                           getStrokeZones() const;
+	void	updateState(bool);
+	void	startShuffling(int, int);
+	void	optimize();
+	const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>&	getFinal() const;
+	const std::vector<Shape>&											getStrokeZones() const;
 
 private:
-	bool    checkPaperOp(int);
-	bool    isLinked(const std::vector<int> &, int);
-	bool    switchConditions(float);
-	void    computeIndex(int, int);
+	bool	checkPaperOp(int);
+	bool	isLinked(const std::vector<int> &, int);
+	bool	switchConditions(float);
+	void	computeIndex(int, int);
 
-	// FLIP
-	std::pair<float, std::vector<int>>  checkFlip(const std::vector<int> &);
-	// TRANSPOSE
-	std::pair<float, std::vector<int>>  checkTranspose(const std::vector<int> &);
-	// CROSS
-	std::pair<float, std::vector<int>>  checkCross(const std::vector<int> &);
-	// ZIGZAG
-	std::pair<float, std::vector<int>>  checkZigZag(const std::vector<int> &);
+	std::pair<float, std::vector<int>> 	checkFlip(const std::vector<int> &);
+	std::pair<float, std::vector<int>> 	checkTranspose(const std::vector<int> &);
+	std::pair<float, std::vector<int>> 	checkCross(const std::vector<int> &);
+	std::pair<float, std::vector<int>> 	checkZigZag(const std::vector<int> &);
 
 };
 
