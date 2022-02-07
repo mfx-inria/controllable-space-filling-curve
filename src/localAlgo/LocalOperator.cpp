@@ -88,9 +88,9 @@ bool LocalOperator::checkPaperOp(int currentNode) {
     if(results[idx].second.empty()) return false;
 
     if(!_isEnd && _iter % 400 == 0) {
-        std::uniform_real_distribution<> dis(0, 8);
-        idx = static_cast<int>(dis(_gen));
-        while(results[idx].second.empty()) idx = static_cast<int>(dis(_gen));
+        std::uniform_int_distribution<int> dis(0, 7);
+        idx = dis(_gen);
+        while(results[idx].second.empty()) idx = dis(_gen);
     }
 
     if(switchConditions(results[idx].first)) {

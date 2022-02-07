@@ -19,17 +19,19 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	initLayers(fileName, layerNb);
 	std::cout << "===== Graph Construction ======" << std::endl;
 	initCycles();
-	std::cout << "=== Combinatorial Optimizer ===" << std::endl;
-	shuffle();
-	std::cout << "===== Geometric Optimizer =====" << std::endl;
-	optimize();
+	// std::cout << "=== Combinatorial Optimizer ===" << std::endl;
+	// shuffle();
+	// std::cout << "===== Geometric Optimizer =====" << std::endl;
+	// optimize();
 
+	/*
 	// Write GCODE
 	Printer printer(Machine::CR10S_PRO);
 	std::cout << "======= Writting GCODE ========" << std::endl;
 	printer.printToGcode(_layers, "colorVary", true);
 	printer.printToGcode(_layers, "colorNoVary", false);
 	std::cout << "============ DONE =============" << std::endl;
+	*/
 } catch(const CSFCerror &e) {
 	std::cerr << e.what() << std::endl;
 	glutLeaveMainLoop();
@@ -85,10 +87,12 @@ inline std::vector<LocalOperator>::iterator bestPath(std::vector<LocalOperator>:
 }
 
 inline void generateNewGeneration(std::vector<LocalOperator> &population) {
+	static int off = 0;
 	if(parallelize(population.size(), [&](int k) {
-		population[k].startShuffling(GeneticAlgorithm::_multiplier, k);		
+		population[k].startShuffling(GeneticAlgorithm::_multiplier, off+k);		
 		std::cout << "resulted score = " << population[k].getScore() << std::endl;
 	})) THROW_ERROR("An error occured in a thread of combinatorial optimizer!");
+	off += population.size();
 }
 
 void GeneticAlgorithm::shuffle() {
