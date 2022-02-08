@@ -6,6 +6,7 @@
 
 #include "LBFGS/cvt.hpp"
 #include "tools/Matching.h"
+#include "tools/Random.h"
 #include <iostream>
 
 const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
@@ -88,7 +89,7 @@ bool LocalOperator::checkPaperOp(int currentNode) {
     if(results[idx].second.empty()) return false;
 
     if(!_isEnd && _iter % 400 == 0) {
-        std::uniform_int_distribution<int> dis(0, 7);
+        UniformInt<int> dis(0, 7);
         idx = dis(_gen);
         while(results[idx].second.empty()) idx = dis(_gen);
     }
@@ -133,7 +134,7 @@ void LocalOperator::startShuffling(int multiplier, int champ) {
     std::vector<int> order(_points.size());
     for(int i = 0; i < (int) order.size(); ++i) order[i] = i;
     int N = order.size();
-    std::uniform_int_distribution<int> dis(0, N-1);
+    UniformInt<int> dis(0, N-1);
     bool pred_isEnd = _isEnd;
     for(int s = 0; s < 2; ++s) {
         if(s) updateState(true);
