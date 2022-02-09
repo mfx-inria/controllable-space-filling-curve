@@ -12,6 +12,9 @@ include_directories(include/LBFGS)
 include_directories(${Boost_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_CXX_STANDARD 17)
+find_package(Threads REQUIRED)
+
 
 add_executable(${PROJECT_NAME}
 	src/main.cpp
@@ -37,4 +40,5 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME}
 	${GLUT_LIBRARY}
 	${OPENGL_LIBRARIES}
 	Eigen3::Eigen
+	Threads::Threads
 )
