@@ -89,9 +89,8 @@ bool LocalOperator::checkPaperOp(int currentNode) {
     if(results[idx].second.empty()) return false;
 
     if(!_isEnd && _iter % 400 == 0) {
-        UniformInt<int> dis(0, 7);
-        idx = dis(_gen);
-        while(results[idx].second.empty()) idx = dis(_gen);
+        idx = _gen()&7u;
+        while(results[idx].second.empty()) idx = _gen()&7u;
     }
 
     if(switchConditions(results[idx].first)) {
