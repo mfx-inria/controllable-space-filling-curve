@@ -6,6 +6,7 @@ find_package(Boost REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Threads REQUIRED)
 
 include_directories(include/)
 include_directories(include/LBFGS)
@@ -13,8 +14,6 @@ include_directories(${Boost_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_CXX_STANDARD 17)
-find_package(Threads REQUIRED)
-
 
 add_executable(${PROJECT_NAME}
 	src/main.cpp

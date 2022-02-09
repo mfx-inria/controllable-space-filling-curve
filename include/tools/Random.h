@@ -2,6 +2,7 @@
 
 namespace RandomImpl {
 template<typename T, typename G> T gen(G &g, T r);
+template<typename T, typename G> T genReal(G &g);
 }
 
 template<typename T>
@@ -9,6 +10,13 @@ struct UniformInt {
 	T a, r;
 	UniformInt(T a, T b): a(a), r(b-a) {}
 	template<typename G> T operator()(G &g) { return RandomImpl::gen(g, r) + a; }
+};
+
+template<typename T>
+struct UniformReal {
+	T a, r;
+	UniformReal(T a, T b): a(a), r(b-a) {}
+	template<typename G> T operator()(G &g) { return RandomImpl::genReal<T>(g) * r + a; }
 };
 
 namespace RandomImpl {
@@ -37,10 +45,10 @@ T gen(G &g, T r) {
 
 	if(grange > range) {
 		const Ctype range2 = range + 1;
-#if __SIZEOF_INT128__
-		if constexpr (grange == std::numeric_limits<uint64_t>::max())
-			return genAux<__uint128_t>(g, (uint64_t) range2);
-#endif
+#		if __SIZEOF_INT128__
+			if constexpr (grange == std::numeric_limits<uint64_t>::max())
+				return genAux<__uint128_t>(g, (uint64_t) range2);
+#		endif
 		if constexpr (grange == std::numeric_limits<uint32_t>::max())
 			return genAux<uint64_t>(g, (uint32_t) range2);
 		const Ctype scaling = grange / range2;
@@ -60,6 +68,22 @@ T gen(G &g, T r) {
 		return x;
 	}
 	return Ctype(g()) - gmin;
+}
+
+template<typename T, typename G>
+T genReal(G &g) {
+	constexpr int d = std::numeric_limits<T>::digits;
+	constexpr long double r = static_cast<long double>(g.max()) - static_cast<long double>(g.min()) + 1.0L;
+	constexpr int log2r = std::log2(r);
+	constexpr int m = std::max<int>(1, (d + log2r - 1UL) / log2r);
+	T sum = 0, tmp = 1;
+	for(int k = m; k; --k) {
+		sum += T(g() - g.min()) * tmp;
+		tmp *= r;
+	}
+    T x = sum / tmp;
+    if(x >= T(1)) [[unlikely]] x = std::nextafter(T(1), T(0));
+    return x;
 }
 
 }

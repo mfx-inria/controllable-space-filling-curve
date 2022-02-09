@@ -4,9 +4,7 @@
 
 #include "managers/GraphCreator.h"
 #include "LBFGS/cvt.hpp"
-
-#include <fstream>
-#include <random>
+#include "tools/Random.h"
 
 // If the point is on the border we pushed it inside the shape and return true
 bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
@@ -106,7 +104,7 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 
 // Create Graph from an SVG file.
 bool GraphCreator::graphFromSvg(const Shape &shape, Graph &graph, int layerIndex) {
-	std::uniform_real_distribution<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
+	UniformReal<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
 	std::mt19937 gen(Globals::_seed + layerIndex);
 	Box<float> box;
 	for (const glm::vec2 &point : shape._points) box.update(point);

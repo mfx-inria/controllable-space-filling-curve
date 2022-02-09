@@ -45,8 +45,7 @@ inline bool LocalOperator::switchConditions(float score_dif) {
     if(score_dif <= 0.f) return true;
     if(_isEnd || score_dif > 0.4f) return false;
     if(_iter % 400 == 0) return true;
-    std::uniform_real_distribution<> dis(0, 1.f + score_dif * _points.size());
-    return (static_cast<int>(dis(_gen)) == 0);
+    return UniformReal<float>(0, 1.f + score_dif * _points.size())(_gen) < 1.f;
 }
 
 ////////////////////////
