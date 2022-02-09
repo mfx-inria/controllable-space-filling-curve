@@ -1,7 +1,7 @@
 #include <random>
 
 namespace RandomImpl {
-template<typename T, typename G> T gen(G &g, T r);
+template<typename T, typename G> T genInt(G &g, T r);
 template<typename T, typename G> T genReal(G &g);
 }
 
@@ -9,7 +9,7 @@ template<typename T>
 struct UniformInt {
 	T a, r;
 	UniformInt(T a, T b): a(a), r(b-a) {}
-	template<typename G> T operator()(G &g) { return RandomImpl::gen(g, r) + a; }
+	template<typename G> T operator()(G &g) { return RandomImpl::genInt(g, r) + a; }
 };
 
 template<typename T>
@@ -18,6 +18,32 @@ struct UniformReal {
 	UniformReal(T a, T b): a(a), r(b-a) {}
 	template<typename G> T operator()(G &g) { return RandomImpl::genReal<T>(g) * r + a; }
 };
+#include <iostream>
+template<typename It, typename G>
+void shuffle(It first, It last, G& g) {
+	if (first == last) return;
+	typedef typename std::make_unsigned<typename std::iterator_traits<It>::difference_type>::type Dist;
+	typedef typename std::common_type<typename G::result_type, Dist>::type Ctype;
+
+	constexpr Ctype grange = g.max() - g.min();
+	const Ctype range = Ctype(last - first);
+
+	if(grange / range >= range) {
+		It it = first + 1;
+		if((range % 2) == 0) std::iter_swap(it++, first + RandomImpl::genInt<Dist>(g, 1));
+		Ctype swap_range = Ctype(it - first);
+		while(it != last) {
+			const Ctype ab = RandomImpl::genInt(g, swap_range * (swap_range+1) - 1);
+			std::iter_swap(it++, first + (ab % swap_range));
+			std::iter_swap(it++, first + (ab / swap_range));
+			swap_range += 2;
+		}
+		return;
+	}
+	Dist swap_range = 0;
+	for(It it = first + 1; it != last; ++it)
+		std::iter_swap(it, first + RandomImpl::genInt(g, ++swap_range));
+}
 
 namespace RandomImpl {
 
@@ -36,7 +62,7 @@ static U genAux(G& g, U range) {
 }
 
 template<typename T, typename G>
-T gen(G &g, T r) {
+T genInt(G &g, T r) {
 	typedef typename std::common_type<typename std::make_unsigned<T>::type, typename G::result_type>::type Ctype;
 	constexpr Ctype gmin = G::min();
 	constexpr Ctype gmax = G::max();
@@ -62,7 +88,7 @@ T gen(G &g, T r) {
 		const Ctype r2 = range / grange2;
 		Ctype tmp, x;
 		do {
-			tmp = grange2 * gen(g, r2);
+			tmp = grange2 * genInt(g, r2);
 			x = tmp + (Ctype(g()) - gmin);
 		} while(x > range || x < tmp);
 		return x;
@@ -81,9 +107,9 @@ T genReal(G &g) {
 		sum += T(g() - g.min()) * tmp;
 		tmp *= r;
 	}
-    T x = sum / tmp;
-    if(x >= T(1)) [[unlikely]] x = std::nextafter(T(1), T(0));
-    return x;
+	T x = sum / tmp;
+	if(x >= T(1)) [[unlikely]] x = std::nextafter(T(1), T(0));
+	return x;
 }
 
 }

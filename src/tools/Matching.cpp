@@ -3,10 +3,10 @@
 //
 
 #include "tools/Matching.h"
+#include "tools/Random.h"
 
 #include <algorithm>
 #include <set>
-#include <random>
 
 Tree::Tree(int nodeIdx, bool needEdge, std::shared_ptr<Tree> parent = nullptr)
 		: _nodeIdx(nodeIdx), _needEdge(needEdge), _parent(parent) {}
@@ -386,11 +386,12 @@ void Matching::switchLink() {
 
 void Matching::augment() {
 	std::vector<int> order(_points.size());
+	std::mt19937 gen(Globals::_seed);
 	for(int i = 0; i < (int) order.size(); ++i) {
 		order[i] = i;
-		std::shuffle(_originalLinks[i].begin(), _originalLinks[i].end(), std::mt19937(Globals::_seed));
+		shuffle(_originalLinks[i].begin(), _originalLinks[i].end(), gen);
 	}
-	std::shuffle(order.begin(), order.end(), std::mt19937(Globals::_seed));
+	shuffle(order.begin(), order.end(), gen);
 	for(int i : order)
 		if(_cLinks[i].empty() && _originalLinks[i].size() == 3)
 			augmentPath(i);
@@ -401,16 +402,13 @@ void Matching::augment() {
 
 // distance between node and the first parent with index idx
 // if no such parent exists, return -1
-int Matching::distInTree(std::shared_ptr<Tree> node, int idx)
-{
+int Matching::distInTree(std::shared_ptr<Tree> node, int idx) {
 	int count = 0;
-	while (node != nullptr && node->_nodeIdx != idx)
-	{
+	while(node != nullptr && node->_nodeIdx != idx) {
 		++ count;
 		node = node->_parent;
 	}
-	if (node != nullptr)
-		return count;
+	if(node != nullptr) return count;
 	return -1;
 }
 
