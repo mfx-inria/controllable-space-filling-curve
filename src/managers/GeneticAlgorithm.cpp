@@ -19,19 +19,17 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	initLayers(fileName, layerNb);
 	std::cout << "===== Graph Construction ======" << std::endl;
 	initCycles();
-	// std::cout << "=== Combinatorial Optimizer ===" << std::endl;
-	// shuffle();
-	// std::cout << "===== Geometric Optimizer =====" << std::endl;
-	// optimize();
+	std::cout << "=== Combinatorial Optimizer ===" << std::endl;
+	shuffle();
+	std::cout << "===== Geometric Optimizer =====" << std::endl;
+	optimize();
 
-	/*
 	// Write GCODE
 	Printer printer(Machine::CR10S_PRO);
 	std::cout << "======= Writting GCODE ========" << std::endl;
 	printer.printToGcode(_layers, "colorVary", true);
 	printer.printToGcode(_layers, "colorNoVary", false);
 	std::cout << "============ DONE =============" << std::endl;
-	*/
 } catch(const CSFCerror &e) {
 	std::cerr << e.what() << std::endl;
 	glutLeaveMainLoop();
@@ -44,7 +42,10 @@ bool parallelize(int n, const F &fun) {
 	const auto f = [&]() {
 		try {
 			int k;
-			while((k = K++) < n) fun(k);
+			while((k = K++) < n) {
+				fun(k);
+				glutPostRedisplay();
+			}
 		} catch(const CSFCerror &e) {
 			error = true;
 			std::cerr << e.what() << std::endl;
@@ -69,14 +70,12 @@ void GeneticAlgorithm::initLayers(const std::string &fileName, int nbLayer) {
 		while(_nbReadyLayers < nbLayer && done[_nbReadyLayers]) ++ _nbReadyLayers;
 	})) THROW_ERROR("An error occured in a thread of shape construction!");
 	_nbReadyLayers = nbLayer;
-	Window::stopRefrech();
 	glutPostRedisplay();
 }
 
 void GeneticAlgorithm::initCycles() {
 	if(parallelize(_layers.size(), [&](int k) {
 		_layers[k].initCycle(k);
-		glutPostRedisplay();
 	})) THROW_ERROR("An error occured in a thread of graph construction!");
 }
 
@@ -115,6 +114,10 @@ void GeneticAlgorithm::shuffle() {
 			glutPostRedisplay();
 
 			std::cout << "end--------- " << op.getScore() << std::endl;
+			uint32_t hash = 0;
+			for(int i = 0; i < op.getLinks().size(); ++i)
+				for(int j = 0; j < op.getLinks()[i].size(); ++j) hash ^= (op.getLinks()[i][j] + 3*i) << (5*j);
+			std::cerr << "HASH " << hash << std::endl;
 		}
 	}
 }
@@ -191,6 +194,5 @@ void GeneticAlgorithm::optimize() {
 	if(parallelize(S, [&](int k) {
 		const auto &[i, j] = path_indices[k];
 		_layers[i]._operators[j].optimize();
-		glutPostRedisplay();
 	})) THROW_ERROR("An error occured in a thread of geometric optimizer!");
 }

@@ -40,13 +40,6 @@ Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
 
 void Window::start() { glutMainLoop(); }
 
-void Window::addToStack(std::promise<u_char*> &im, const std::vector<std::vector<Shape>> &zones) {
-	currentInstance->_stack_lock.lock();
-	currentInstance->_stack.emplace_back(im, zones);
-	currentInstance->_stack_lock.unlock();
-}
-void Window::stopRefrech() { currentInstance->_isRefresh = false; }
-
 void Window::drawCallback() { currentInstance->display(); }
 void Window::keyCallback(unsigned char key, int x, int y) { currentInstance->keyPressed(key, x, y); }
 void Window::mouseCallback(int button, int state, int x, int y) { currentInstance->mouseClicked(button, state, x, y); }
@@ -242,21 +235,9 @@ void Window::displayCycle() {
 }
 
 void Window::display() {
-	while(true) {
-		_stack_lock.lock();
-		if(_stack.empty()) {
-			_stack_lock.unlock();
-			break;
-		}
-		auto [im, zones] = _stack.back();
-		_stack.pop_back();
-		_stack_lock.unlock();
-		DirectionField::computeImage(im, zones);
-	}
 	glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
 	glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)
 	if(_ga->getNbReadyLayers() > 0) displayCycle();
 	glutSwapBuffers();
-	if(_isRefresh) glutPostRedisplay();
 }
 

@@ -226,13 +226,24 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	_vectorField[layerIndex].resize(nearest.size());
 	u_char* image = new u_char[3*nearest.size()];
 
-	for(int i = 0; i < (int) 3*nearest.size(); ++i) image[i] = 0;
+	for(int i = 0; i < 3*(int)nearest.size(); ++i) image[i] = 0;
 	const auto raster = [&](std::array<glm::vec2, 3> &&v, const int c=-1) {
 		std::sort(v.begin(), v.end(), [&](const glm::vec2 &a, const glm::vec2 &b) { return a.y < b.y; });
 		for(glm::vec2 &a : v) for(int d : {0, 1}) a[d] *= irat[d];
 		int y = v[0].y;
 		float yf = y + .5f;
 		if(yf < v[0].y) ++y, ++yf;
+		const auto yloop = [&](float my, float &x0, float &x1, float &slope1, float &slope2) {
+			for(; yf < my; ++y, ++yf, x0 += slope1, x1 += slope2) {
+				const int x = x0;
+				float xf = x + .5f;
+				int pix = x + y * _imgWidth;
+				if(xf < x0) ++pix, ++xf;
+				for(; xf < x1; ++pix, ++xf)
+					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
+					else image[3*pix+c] = 0xff;
+			}
+		};
 		if(yf < v[1].y) {
 			float slope1 = (v[1].x - v[0].x) / (v[1].y - v[0].y);
 			float slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
@@ -240,17 +251,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 			const float dy = yf - v[0].y;
 			float x0 = v[0].x + dy * slope1;
 			float x1 = v[0].x + dy * slope2;
-			for(; yf < v[1].y; ++y, ++yf, x0 += slope1, x1 += slope2) {
-				const int x = x0;
-				float xf = x + .5f;
-				int pix = x + y * _imgWidth;
-				if(xf < x0) ++pix, ++xf;
-				for(; xf < x1; ++pix, ++xf) {
-					if(pix >= 3*nearest.size()) THROW_ERROR("HEHE");
-					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
-					else image[3*pix+c] = 0xff;
-				}
-			}
+			yloop(v[1].y, x0, x1, slope1, slope2);
 		}
 		if(yf < v[2].y) {
 			float slope1 = (v[2].x - v[1].x) / (v[2].y - v[1].y);
@@ -261,17 +262,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 				std::swap(slope1, slope2);
 				std::swap(x0, x1);
 			}
-			for(; yf < v[2].y; ++y, ++yf, x0 += slope1, x1 += slope2) {
-				const int x = x0;
-				float xf = x + .5f;
-				int pix = x + y * _imgWidth;
-				if(xf < x0) ++pix, ++xf;
-				for(; xf < x1; ++pix, ++xf) {
-					if(pix >= 3*nearest.size()) THROW_ERROR("HEHE");
-					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
-					else image[3*pix+c] = 0xff;
-				}
-			}
+			yloop(v[2].y, x0, x1, slope1, slope2);
 		}
 	};
 	for(const std::vector<Shape> &zones : zones) {
@@ -283,12 +274,6 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 				for(uint j = 0; j < zone._triangles[i+1].size(); j += 3)
 					raster({zone._points[zone._triangles[i][j]], zone._points[zone._triangles[i][j+1]], zone._points[zone._triangles[i][j+2]]});
 		}
-	}
-
-	{
-	uint32_t hash = 0;
-	for(uint32_t i = 0; i < 3*nearest.size(); ++i) hash ^= i + uint32_t(image[i] > 128) << (8*(i%3));
-	std::cerr << "HASH_IM " << hash << std::endl;
 	}
 
 	//////////
@@ -346,10 +331,6 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
 	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
-	
-	uint32_t hash = 0;
-	for(int i = 0; i < _vectorFieldSum[layerIndex].size(); ++i) hash ^= (*(uint32_t*)(&_vectorFieldSum[layerIndex][i].x) + *(uint32_t*)(&_vectorFieldSum[layerIndex][i].y) + i);
-	std::cerr << "HASH " << hash << std::endl;
 
 	delete[] image;
 }

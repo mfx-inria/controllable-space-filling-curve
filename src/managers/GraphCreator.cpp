@@ -120,17 +120,9 @@ bool GraphCreator::graphFromSvg(const Shape &shape, Graph &graph, int layerIndex
 		}
 	}
 	if(centroids.size() < 3) return false;
-	uint32_t hash = 0;
-	for(const auto &v : centroids) hash ^= (*(uint32_t*)(&v.x) + *(uint32_t*)(&v.y));
-	std::cerr << "HASH " << hash << std::endl;
 
 	SegmentCVT cvt(&shape, box, layerIndex);
 	graph = cvt.optimize(centroids);
-
-	hash = 0;
-	for(int i = 0; i < graph._originalLinks.size(); ++i)
-		for(int j = 0; j < graph._originalLinks[i].size(); ++j) hash ^= (graph._originalLinks[i][j] + i) << j;
-	std::cerr << "HASH " << hash << std::endl;
 
 	// remove 2co
 	remove2coPoints(shape, graph);

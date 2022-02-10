@@ -14,15 +14,12 @@ public:
 	Window(int argc, char **argv, GeneticAlgorithm* ga);
 
 	void start();
-	static void addToStack(std::promise<u_char*> &, const std::vector<std::vector<Shape>> &);
-	static void stopRefrech();
 	static void printHelp();
 
 private:
 	inline static Window*  currentInstance;
 
 	GeneticAlgorithm*		_ga;
-	bool                    _isRefresh = true;
 	int						_graphMode = 0;
 	bool                    _showVecField = false;
 	bool                    _showPrintColor = true;
@@ -32,9 +29,6 @@ private:
 	float                   _zoom = 1.;
 	glm::vec2               _lastClikedPos;
 	bool                    _leftDown = false;
-
-	std::mutex _stack_lock;
-	std::vector<std::pair<std::promise<u_char*> &, const std::vector<std::vector<Shape>> &>> _stack;
 
 private:
 	void                    display();
