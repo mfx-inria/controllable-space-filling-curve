@@ -6,8 +6,6 @@
 #define HAMILTON_WINDOW_H
 
 #include "managers/GeneticAlgorithm.h"
-#include <future>
-#include <mutex>
 
 class Window {
 public:

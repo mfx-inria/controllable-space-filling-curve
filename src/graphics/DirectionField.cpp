@@ -220,13 +220,11 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	}
 
 	/////////
-	// Render image to know the zones in O(1)
+	// Rastzerize zones to init vector field
 	/////////
 
-	_vectorField[layerIndex].resize(nearest.size());
-	u_char* image = new u_char[3*nearest.size()];
+	_vectorField[layerIndex].assign(nearest.size(), glm::vec2(0.f, 0.f));
 
-	for(int i = 0; i < 3*(int)nearest.size(); ++i) image[i] = 0;
 	const auto raster = [&](std::array<glm::vec2, 3> &&v, const int c=-1) {
 		std::sort(v.begin(), v.end(), [&](const glm::vec2 &a, const glm::vec2 &b) { return a.y < b.y; });
 		for(glm::vec2 &a : v) for(int d : {0, 1}) a[d] *= irat[d];
@@ -239,9 +237,18 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 				float xf = x + .5f;
 				int pix = x + y * _imgWidth;
 				if(xf < x0) ++pix, ++xf;
-				for(; xf < x1; ++pix, ++xf)
-					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
-					else image[3*pix+c] = 0xff;
+				for(; xf < x1; ++pix, ++xf) {
+					if(nearest[pix] == -1) THROW_ERROR("Nearest not filled!");
+					if(c == -1) {
+						_vectorField[layerIndex][pix] = glm::vec2(0.f, 0.f);
+						continue;
+					}
+					const glm::vec2 p(xf * rat[0], yf * rat[1]);
+					float angle = segments[nearest[pix]].normal_angle(p);
+					if(c) angle += M_PI_2;
+					_vectorField[layerIndex][pix].x = std::cos(angle);
+					_vectorField[layerIndex][pix].y = std::sin(angle);
+				}
 			}
 		};
 		if(yf < v[1].y) {
@@ -265,6 +272,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 			yloop(v[2].y, x0, x1, slope1, slope2);
 		}
 	};
+
 	for(const std::vector<Shape> &zones : zones) {
 		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
 			const int c = !IS_ORTHO(zone._objcetive);
@@ -276,29 +284,6 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 		}
 	}
 
-	//////////
-	// Compute the two vector images
-	//////////
-
-	// vector field
-	for(int i = 0; i < (int) nearest.size(); ++i) {
-		if(nearest[i] == -1) THROW_ERROR("Nearest not filled!");
-		const bool R = image[3*i] > 128;
-		const bool G = image[3*i+1] > 128;
-		if(R || G) {
-			if(R && G) THROW_ERROR("Mix between red and green");
-			const int x = i % _imgWidth, y = i / _imgWidth;
-			const glm::vec2 p((x + .5f) * rat[0], (y + .5f) * rat[1]);
-			float angle = segments[nearest[i]].normal_angle(p);
-			if(G) angle += M_PI_2;
-			_vectorField[layerIndex][i].x = std::cos(angle);
-			_vectorField[layerIndex][i].y = std::sin(angle);
-		} else {
-			_vectorField[layerIndex][i].x = 0.f;
-			_vectorField[layerIndex][i].y = 0.f;
-		}
-	}
-
 	// vector field sum
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
 	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
@@ -306,7 +291,10 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	for(int i = 1; i < (int) nearest.size(); ++i) if(i % _imgWidth != 0)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-1];
 
-	// smoothing
+	//////////
+	// Smoothing
+	//////////
+
 	for(int i = 0; i < (int) nearest.size(); ++i) {
 		int x = i % _imgWidth, y = i / _imgWidth;
 		if(_vectorField[layerIndex][i] == glm::vec2(0., 0.)) continue;
@@ -331,60 +319,4 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
 	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
-
-	delete[] image;
-}
-
-void DirectionField::computeImage(std::promise<u_char*> &im, const std::vector<std::vector<Shape>> &zones) {
-	GLuint framebuffer;
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-	GLuint renderedTexture;
-	glGenTextures(1, &renderedTexture);
-	glBindTexture(GL_TEXTURE_2D, renderedTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _imgWidth, _imgHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
-
-	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-
-	glClearColor(0.f, 0.f, 0.f, 0.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, _imgWidth, _imgHeight);
-
-	// Draw
-	glLoadIdentity();
-	gluOrtho2D(0.f, Globals::_SVGSize.x, 0.f, Globals::_SVGSize.y);
-	glBegin(GL_TRIANGLES);
-	for(const std::vector<Shape> &zones : zones) {
-		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
-				if(IS_ORTHO(zone._objcetive)) glColor3f(1.f, 0.f, 0.f);
-				else glColor3f(0.f, 1.f, 0.f);
-				for(uint i : zone._triangles[0])
-					glVertex2f(zone._points[i].x, zone._points[i].y);
-				glColor3f(0.f, 0.f, 0.f);
-				for(uint i = 0; i < zone._holes.size(); ++i)
-					for(uint j : zone._triangles[i+1])
-						glVertex2f(zone._holes[i][j].x, zone._holes[i][j].y);
-			}
-	}
-	glEnd();
-
-	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-
-	GLubyte* pixels = new GLubyte[3*_imgWidth*_imgHeight];
-	GLint pack = 7;
-	while(_imgWidth&pack) pack >>= 1;
-	++ pack;
-	glPixelStorei(GL_PACK_ALIGNMENT, pack);
-	glReadPixels(0, 0, _imgWidth, _imgHeight, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-
-	// Clean up
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glDeleteTextures(1, &renderedTexture);
-	glDeleteFramebuffers(1, &framebuffer);
-
-	im.set_value(pixels);
 }

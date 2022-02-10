@@ -18,7 +18,7 @@ struct UniformReal {
 	UniformReal(T a, T b): a(a), r(b-a) {}
 	template<typename G> T operator()(G &g) { return RandomImpl::genReal<T>(g) * r + a; }
 };
-#include <iostream>
+
 template<typename It, typename G>
 void shuffle(It first, It last, G& g) {
 	if (first == last) return;

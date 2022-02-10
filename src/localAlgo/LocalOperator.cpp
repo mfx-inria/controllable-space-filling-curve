@@ -7,7 +7,6 @@
 #include "LBFGS/cvt.hpp"
 #include "tools/Matching.h"
 #include "tools/Random.h"
-#include <iostream>
 
 const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
         {{0, 1}, {2, 3}, {4, 5}},           // flip curr
