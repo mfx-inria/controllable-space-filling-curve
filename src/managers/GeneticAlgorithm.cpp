@@ -114,10 +114,6 @@ void GeneticAlgorithm::shuffle() {
 			glutPostRedisplay();
 
 			std::cout << "end--------- " << op.getScore() << std::endl;
-			uint32_t hash = 0;
-			for(int i = 0; i < op.getLinks().size(); ++i)
-				for(int j = 0; j < op.getLinks()[i].size(); ++j) hash ^= (op.getLinks()[i][j] + 3*i) << (5*j);
-			std::cerr << "HASH " << hash << std::endl;
 		}
 	}
 }
