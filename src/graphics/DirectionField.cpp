@@ -6,6 +6,7 @@
 
 #include <queue>
 #include <algorithm>
+#include <iostream>
 
 struct Segment {
 	glm::vec2 _a, _b, _v;
@@ -161,20 +162,22 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	std::vector<float> D(_imgWidth * _imgHeight, std::numeric_limits<float>::max());
 	const int imS[2] { _imgWidth, _imgHeight };
 	const float rat[2] { Globals::_SVGSize.x / _imgWidth, Globals::_SVGSize.y / _imgHeight };
+	const float irat[2] { _imgWidth / Globals::_SVGSize.x, _imgHeight / Globals::_SVGSize.y };
 
 	// init Q
 	for(int i = 0; i < (int) segments.size(); ++i) {
 		const Segment &seg = segments[i];
 		const int h = std::abs(seg._v.x) < std::abs(seg._v.y);
-		int x0 = seg._a[h] / rat[h], x1 = seg._b[h] / rat[h];
+		const float slope = seg._v[h^1] / seg._v[h];
+		int x0 = seg._a[h] * irat[h], x1 = seg._b[h] * irat[h];
 		if(x0 > x1) std::swap(x0, x1);
 		x0 = std::max(0, x0-1);
 		x1 = std::min(imS[h]-1, x1+1);
 		for(int x = x0; x <= x1; ++x) {
 			glm::vec2 p;
 			p[h] = (x + 0.5f) * rat[h];
-			const float y = seg._a[h^1] + (p[h] - seg._a[h]) * seg._v[h^1] / seg._v[h];
-			const int y0 = std::max(0, int(y / rat[h^1] - 1.f));
+			const float y = seg._a[h^1] + (p[h] - seg._a[h]) * slope;
+			const int y0 = std::max(0, int(y * irat[h^1] - 1.f));
 			const int y1 = std::min(imS[h^1]-1, y0 + 2);
 			for(int y = y0; y <= y1; ++y) {
 				p[h^1] = (y + 0.5f) * rat[h^1];
@@ -220,11 +223,73 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	// Render image to know the zones in O(1)
 	/////////
 
-	std::promise<u_char*> image_promise;
-	std::future<u_char*> image_future = image_promise.get_future();
-	Window::addToStack(image_promise, zones);
 	_vectorField[layerIndex].resize(nearest.size());
-	u_char* image = image_future.get();
+	u_char* image = new u_char[3*nearest.size()];
+
+	for(int i = 0; i < (int) 3*nearest.size(); ++i) image[i] = 0;
+	const auto raster = [&](std::array<glm::vec2, 3> &&v, const int c=-1) {
+		std::sort(v.begin(), v.end(), [&](const glm::vec2 &a, const glm::vec2 &b) { return a.y < b.y; });
+		for(glm::vec2 &a : v) for(int d : {0, 1}) a[d] *= irat[d];
+		int y = v[0].y;
+		float yf = y + .5f;
+		if(yf < v[0].y) ++y, ++yf;
+		if(yf < v[1].y) {
+			float slope1 = (v[1].x - v[0].x) / (v[1].y - v[0].y);
+			float slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
+			if(slope1 > slope2) std::swap(slope1, slope2);
+			const float dy = yf - v[0].y;
+			float x0 = v[0].x + dy * slope1;
+			float x1 = v[0].x + dy * slope2;
+			for(; yf < v[1].y; ++y, ++yf, x0 += slope1, x1 += slope2) {
+				const int x = x0;
+				float xf = x + .5f;
+				int pix = x + y * _imgWidth;
+				if(xf < x0) ++pix, ++xf;
+				for(; xf < x1; ++pix, ++xf) {
+					if(pix >= 3*nearest.size()) THROW_ERROR("HEHE");
+					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
+					else image[3*pix+c] = 0xff;
+				}
+			}
+		}
+		if(yf < v[2].y) {
+			float slope1 = (v[2].x - v[1].x) / (v[2].y - v[1].y);
+			float slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
+			float x0 = v[1].x + (yf - v[1].y) * slope1;
+			float x1 = v[0].x + (yf - v[0].y) * slope2;
+			if(x0 > x1) {
+				std::swap(slope1, slope2);
+				std::swap(x0, x1);
+			}
+			for(; yf < v[2].y; ++y, ++yf, x0 += slope1, x1 += slope2) {
+				const int x = x0;
+				float xf = x + .5f;
+				int pix = x + y * _imgWidth;
+				if(xf < x0) ++pix, ++xf;
+				for(; xf < x1; ++pix, ++xf) {
+					if(pix >= 3*nearest.size()) THROW_ERROR("HEHE");
+					if(c == -1) image[3*pix] = image[3*pix+1] = 0;
+					else image[3*pix+c] = 0xff;
+				}
+			}
+		}
+	};
+	for(const std::vector<Shape> &zones : zones) {
+		for(const Shape &zone : zones) if(IS_VECTOR(zone._objcetive)) {
+			const int c = !IS_ORTHO(zone._objcetive);
+			for(uint i = 0; i < zone._triangles[0].size(); i += 3)
+				raster({zone._points[zone._triangles[0][i]], zone._points[zone._triangles[0][i+1]], zone._points[zone._triangles[0][i+2]]}, c);
+			for(uint i = 0; i < zone._holes.size(); ++i)
+				for(uint j = 0; j < zone._triangles[i+1].size(); j += 3)
+					raster({zone._points[zone._triangles[i][j]], zone._points[zone._triangles[i][j+1]], zone._points[zone._triangles[i][j+2]]});
+		}
+	}
+
+	{
+	uint32_t hash = 0;
+	for(uint32_t i = 0; i < 3*nearest.size(); ++i) hash ^= i + uint32_t(image[i] > 128) << (8*(i%3));
+	std::cerr << "HASH_IM " << hash << std::endl;
+	}
 
 	//////////
 	// Compute the two vector images
@@ -281,6 +346,10 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	_vectorFieldSum[layerIndex] = _vectorField[layerIndex];
 	for(int i = _imgWidth; i < (int) nearest.size(); ++i)
 		_vectorFieldSum[layerIndex][i] += _vectorFieldSum[layerIndex][i-_imgWidth];
+	
+	uint32_t hash = 0;
+	for(int i = 0; i < _vectorFieldSum[layerIndex].size(); ++i) hash ^= (*(uint32_t*)(&_vectorFieldSum[layerIndex][i].x) + *(uint32_t*)(&_vectorFieldSum[layerIndex][i].y) + i);
+	std::cerr << "HASH " << hash << std::endl;
 
 	delete[] image;
 }
