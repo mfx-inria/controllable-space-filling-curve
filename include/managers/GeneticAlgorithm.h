@@ -22,9 +22,9 @@ public:
 private:
     int                 _nbIndividuals;
     int                 _nbReadyLayers = 0;
-    int                 _nbChampion = 12;
+    int                 _nbChampion = 10;
     int                 _sonPerChamp = 4;
-    int                 _genNumber = 7;
+    int                 _genNumber = 6;
     std::vector<LocalOperator>  _population;
     std::vector<LocalOperator>  _champions;
 

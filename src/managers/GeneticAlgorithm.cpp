@@ -88,21 +88,26 @@ inline std::vector<LocalOperator>::iterator bestPath(std::vector<LocalOperator>:
 inline void generateNewGeneration(std::vector<LocalOperator> &population) {
 	static int off = 0;
 	if(parallelize(population.size(), [&](int k) {
-		population[k].startShuffling(GeneticAlgorithm::_multiplier, off+k);		
-		std::cout << "resulted score = " << population[k].getScore() << std::endl;
+		population[k].startShuffling(GeneticAlgorithm::_multiplier, off+k);
 	})) THROW_ERROR("An error occured in a thread of combinatorial optimizer!");
 	off += population.size();
+}
+
+inline void printScores(const std::vector<LocalOperator> &ops) {
+	std::vector<float> scores(ops.size());
+	for(int i = 0; i < (int) ops.size(); ++i) scores[i] = ops[i].getScore();
+	std::sort(scores.begin(), scores.end());
+	std::cout << "Generation scores" << std::endl;
+	std::cout << "[  ";
+	for(float s : scores) std::cout << s << "  ";
+	std::cout << "]" << std::endl;
 }
 
 void GeneticAlgorithm::shuffle() {
 	for (Layer &layer : _layers) {
 		for(LocalOperator &op : layer._operators) {
 			if(op.getPoints().size() < 7) continue;
-
-			_population.clear();
 			_population.assign(_nbIndividuals, op);
-
-			generateNewGeneration(_population);
 			initChampions();
 			for (int j = 0; j < _genNumber; j++) {
 				upgradeGeneration();
@@ -134,6 +139,7 @@ int getDiff(const LocalOperator &champ, const LocalOperator &indiv) {
 }
 
 void GeneticAlgorithm::initChampions() {
+	generateNewGeneration(_population);
 	_champions.clear();
 	_champions.resize(_nbChampion);
 
@@ -155,6 +161,7 @@ void GeneticAlgorithm::initChampions() {
 		scores[idx] = scores.back();
 		scores.pop_back();
 	}
+	printScores(_champions);
 }
 
 void GeneticAlgorithm::upgradeGeneration() {
@@ -169,6 +176,7 @@ void GeneticAlgorithm::upgradeGeneration() {
 		std::vector<LocalOperator>::iterator it = bestPath(_population.begin() + (i * _sonPerChamp), _population.begin() + ((i + 1) * _sonPerChamp));
 		if(_champions[i].getScore() >= it->getScore()) _champions[i] = std::move(*it);
 	}
+	printScores(_champions);
 }
 
 void GeneticAlgorithm::finishUpGeneration() {
@@ -176,6 +184,7 @@ void GeneticAlgorithm::finishUpGeneration() {
 	for (auto &champ : _champions)
 		champ.updateState(true);
 	generateNewGeneration(_champions);
+	printScores(_champions);
 }
 
 void GeneticAlgorithm::optimize() {

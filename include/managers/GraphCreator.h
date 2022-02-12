@@ -7,9 +7,6 @@
 
 #include "graphics/Shape.h"
 
-class GraphCreator {
-public:
-    static bool graphFromSvg(const Shape &shape, Graph &graph, int layerIndex);
-};
+bool initGraph(const Shape &shape, Graph &graph, int layerIndex);
 
 #endif //HAMILTON_GRAPHCREATOR_H

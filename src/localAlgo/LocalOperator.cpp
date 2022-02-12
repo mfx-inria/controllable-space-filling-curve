@@ -170,7 +170,7 @@ void LocalOperator::optimize()
     smoother.optimize(x);
 
     // Update Link
-    PointCVT cvt(&_border._points, &_border._holes);
+    PointCVT cvt(&_border);
     cvt.updateLink(x, _points, _originalLinks, _cLinks);
     computeZone();
 

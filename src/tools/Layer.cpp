@@ -18,7 +18,7 @@ void Layer::initLayer(const std::string &fileName, int layerIndex) {
 void Layer::initCycle(int layerIndex) {
 	for(int i = 0; i < (int) _operators.size(); ++i) {
 		Graph graph;
-		if(!GraphCreator::graphFromSvg(_operators[i].getBorder(), graph, layerIndex)) {
+		if(!initGraph(_operators[i].getBorder(), graph, layerIndex)) {
 			if(i+1 < (int) _operators.size()) _operators[i] = std::move(_operators.back());
 			_operators.pop_back();
 		} else {
