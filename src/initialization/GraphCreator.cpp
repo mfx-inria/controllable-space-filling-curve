@@ -2,13 +2,28 @@
 // Created by bedela on 18/05/2020.
 //
 
-#include "managers/GraphCreator.h"
+#include "initialization/GraphCreator.h"
 #include "graphics/DirectionField.h"
 #include "LBFGS/cvt.hpp"
 #include "LBFGS.h"
 #include "tools/Random.h"
 
 #include <iostream>
+
+// get voronoi cell's center from its points
+glm::vec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<glm::vec2> &points) {
+	glm::vec2 center(0.f, 0.f);
+	float area = 0.;
+	for(int i = 0; i < (int) cell.size(); ++i) {
+		const glm::vec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
+		const float dx = b.x - a.x;
+		const glm::vec2 s = a+b;
+		area += dx * s.y / 2.;
+		center += dx * (b.y*b + s.y*s + a.y*a) / glm::vec2(6.f, 12.f);
+	}
+	center /= area;
+	return center;
+}
 
 //////////////////
 //
@@ -41,8 +56,7 @@ private:
 //////////////////
 
 // If the point is on the border we pushed it inside the shape and return true
-bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a) {
-	constexpr float EPS = 1e-4f;
+bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a, const float EPS=1e-4f) {
 	for(int k = 1; k < (int) border.size(); ++k) {
 		glm::vec2 v = border[k-1] - border[k];
 		float l = glm::length(v);
@@ -77,17 +91,17 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 	// Stack containing points to remove
 	std::vector<int> stack;
 	for(int i = 0; i < (int) graph._points.size(); ++i)
-		if(graph._originalLinks[i].size() < 3 && !border.isNear(graph._points[i]))
+		if(graph._links[i].size() < 3 && !border.isNear(graph._points[i]))
 			stack.push_back(i);
 
 	// Remove loop (update links)
 	while(!stack.empty()) {
 		int i = stack.back();
 		stack.pop_back();
-		std::vector<int> &link = graph._originalLinks[i];
+		std::vector<int> &link = graph._links[i];
 		if(link.size() == 2) {
-			for(int o = 0; o < 2; ++o) {
-				std::vector<int> &link2 = graph._originalLinks[link[0]];
+			for(int step = 2; step--;) {
+				std::vector<int> &link2 = graph._links[link[0]];
 				const std::vector<int>::iterator it = std::find(link2.begin(), link2.end(), i);
 				if(std::find(link2.begin(), link2.end(), link[1]) == link2.end()) *it = link[1];
 				else {
@@ -98,8 +112,8 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 				std::swap(link[0], link[1]);
 			}
 		} else if(link.size() == 1) {
-			std::vector<int> &link2 = graph._originalLinks[link[0]];
-			std::vector<int>::iterator it = std::find(link2.begin(), link2.end(), i);
+			std::vector<int> &link2 = graph._links[link[0]];
+			const std::vector<int>::iterator it = std::find(link2.begin(), link2.end(), i);
 			*it = link2.back();
 			link2.pop_back();
 			if(link2.size() < 3 && !border.isNear(graph._points[link[0]])) stack.push_back(link[0]);
@@ -111,7 +125,7 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 	std::vector<int> newIndices(graph._points.size(), -1);
 	int newSize = 0;
 	for(int i = 0; i < (int) newIndices.size(); ++i)
-		if(!graph._originalLinks[i].empty())
+		if(!graph._links[i].empty())
 			newIndices[i] = newSize++;
 
 	// Update cells
@@ -122,22 +136,26 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 			if(k != -1) cell[s++] = k;
 		}
 		cell.resize(s);
+		cell.shrink_to_fit();
 	}
 
 	// Swapping points and links
 	for(int i = 0; i < (int) newIndices.size(); ++i) {
-		int k = newIndices[i];
+		const int k = newIndices[i];
 		if(k == -1) continue;
-		for(int &l : graph._originalLinks[i]) l = newIndices[l];
-		std::swap(graph._originalLinks[i], graph._originalLinks[k]);
-		std::swap(graph._points[i], graph._points[k]);
+		for(int &l : graph._links[i]) l = newIndices[l];
+		if(k == i) continue;
+		graph._points[k] = std::move(graph._points[i]);
+		graph._links[k] = std::move(graph._links[i]);
 	}
-	graph._originalLinks.resize(newSize);
 	graph._points.resize(newSize);
+	graph._points.shrink_to_fit();
+	graph._links.resize(newSize);
+	graph._links.shrink_to_fit();
 }
 
 // Create Graph from an SVG file.
-bool initGraph(const Shape &shape, Graph &graph, int layerIndex) {
+bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 	UniformReal<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
 	std::mt19937 gen(Globals::_seed + layerIndex);
 	Box<float> box;
@@ -162,10 +180,11 @@ bool initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 	remove2coPoints(shape, graph);
 
 	// push points inside
+	const double EPS = 1e-5f * box.diag();
 	for(glm::vec2 &p : graph._points) {
-		if(push_inside(shape._points, p)) continue;
+		if(push_inside(shape._points, p, EPS)) continue;
 		for(const std::vector<glm::vec2> &in : shape._holes)
-			if(push_inside(in, p)) break;
+			if(push_inside(in, p, EPS)) break;
 	}
 
 	return true;
@@ -397,7 +416,7 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 
 		// Iteration over every polygon of the clipped cell
 		const auto link = [&](int i, int j)->void {
-			if(i == j || std::find(graph._originalLinks[i].begin(), graph._originalLinks[i].end(), j) != graph._originalLinks[i].end()) return;
+			if(i == j || std::find(graph._links[i].begin(), graph._links[i].end(), j) != graph._links[i].end()) return;
 			if(ind >= _points.size()) {
 				glm::vec2 A = _segments[ind - _points.size()].first / _scale + _mid;
 				glm::vec2 B = _segments[ind - _points.size()].second / _scale + _mid;
@@ -408,8 +427,8 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 				if(glm::distance(p + v * std::min(len, std::max(0.f, glm::dot(v, A - p))), A) < 4.f*eps
 				   || glm::distance(p + v * std::min(len, std::max(0.f, glm::dot(v, B - p))), B) < 4.f*eps) return;
 			}
-			graph._originalLinks[i].push_back(j);
-			graph._originalLinks[j].push_back(i);
+			graph._links[i].push_back(j);
+			graph._links[j].push_back(i);
 		};
 		std::vector<int> &cell = graph._cells[ind-4];
 		for(ClipperLib::Path &P0 : clipped) {
@@ -426,7 +445,7 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 				if(idx == -1) {
 					m[p] = idx = graph._points.size();
 					graph._points.push_back(p);
-					graph._originalLinks.emplace_back();
+					graph._links.emplace_back();
 				}
 				if(std::find(cell.begin(), cell.end(), idx) == cell.end()) cell.push_back(idx);
 				if(last == -1) start = idx;
@@ -442,7 +461,7 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 		if(cell.empty()) continue;
 		std::set<int> S(cell.begin()+1, cell.end());
 		for(int i = 1; i < (int) cell.size(); ++i) {
-			for(int j : graph._originalLinks[cell[i-1]]) {
+			for(int j : graph._links[cell[i-1]]) {
 				std::set<int>::iterator it = S.find(j);
 				if(it != S.end()) {
 					cell[i] = *it;

@@ -73,25 +73,3 @@ bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 
 	float t;
 	return intersect(a, b, c, d, t);
 }
-
-//////////////////
-//
-//      GRAPH
-//
-//////////////////
-
-// get voronoi cell's center from its points
-glm::vec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<glm::vec2> &points) {
-	glm::vec2 center(0.f, 0.f);
-	float area = 0.;
-	for(int i = 0; i < (int) cell.size(); ++i) {
-		const glm::vec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
-		float dx = b.x - a.x;
-		glm::vec2 s = a+b;
-		area += dx * s.y / 2.;
-		center += dx * (b.y*b + s.y*s + a.y*a) / glm::vec2(6.f, 12.f);
-	}
-	center /= area;
-	return center;
-}
-

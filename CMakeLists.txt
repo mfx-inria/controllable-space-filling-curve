@@ -12,7 +12,7 @@ include_directories(include/)
 include_directories(include/LBFGS)
 include_directories(${Boost_INCLUDE_DIR})
 
-set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_CXX_FLAGS "-Wall -g")
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(${PROJECT_NAME}
@@ -22,15 +22,15 @@ add_executable(${PROJECT_NAME}
 	src/graphics/Shape.cpp
 	src/graphics/triangulate.cpp
 	src/graphics/Window.cpp
+	src/initialization/GraphCreator.cpp
+	src/initialization/CycleCreator.cpp
 	src/LBFGS/clipper.cpp
 	src/LBFGS/cvt.cpp
 	src/localAlgo/LocalOperator.cpp
 	src/localAlgo/ObjectiveFunctions.cpp
 	src/managers/GeneticAlgorithm.cpp
-	src/managers/GraphCreator.cpp
 	src/managers/Printer.cpp
 	src/tools/Layer.cpp
-	src/tools/Matching.cpp
 	src/tools/Union.cpp
 )
 

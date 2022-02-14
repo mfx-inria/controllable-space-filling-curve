@@ -228,7 +228,8 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 			// Create graph
 			const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
 			std::map<glm::vec2, int, decltype(vec2Comp)> map(vec2Comp);
-			Graph graph;
+			std::vector<glm::vec2> points;
+			std::vector<std::vector<int>> links;
 			while(Z0 < Z1) {
 				const Shape &zone = zones[perm[Z0++]];
 				const auto addCycle = [&](const std::vector<glm::vec2> &cycle) {
@@ -242,12 +243,12 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 						if(idx == -1) for(auto it2 = it; it2 != map.begin() && (--it2)->first.x >= xmin;)
 							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
 						if(idx == -1) {
-							idx = graph._points.size();
-							graph._points.emplace_back(p);
-							graph._originalLinks.emplace_back();
+							idx = points.size();
+							points.emplace_back(p);
+							links.emplace_back();
 							map.emplace_hint(it, p, idx);
 						}
-						if(prev >= 0) graph._originalLinks[prev].push_back(idx);
+						if(prev >= 0) links[prev].push_back(idx);
 						prev = idx;
 					}
 				};
@@ -256,33 +257,33 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 			}
 
 			// update links
-			for(int i = 0; i < (int) graph._points.size(); ++i) {
+			for(int i = 0; i < (int) points.size(); ++i) {
 				int k = 0;
-				while(k < (int) graph._originalLinks[i].size()) {
-					int j = graph._originalLinks[i][k];
-					std::vector<int>::iterator it = std::find(graph._originalLinks[j].begin(), graph._originalLinks[j].end(), i);
-					if(it == graph._originalLinks[j].end()) ++k;
+				while(k < (int) links[i].size()) {
+					int j = links[i][k];
+					std::vector<int>::iterator it = std::find(links[j].begin(), links[j].end(), i);
+					if(it == links[j].end()) ++k;
 					else {
-						graph._originalLinks[i][k] = graph._originalLinks[i].back();
-						graph._originalLinks[i].pop_back();
-						*it = graph._originalLinks[j].back();
-						graph._originalLinks[j].pop_back();
+						links[i][k] = links[i].back();
+						links[i].pop_back();
+						*it = links[j].back();
+						links[j].pop_back();
 					}
 				}
 			}
 
 			// Create pathes
-			std::vector<bool> toSee(graph._points.size(), true);
+			std::vector<bool> toSee(points.size(), true);
 			std::vector<std::vector<glm::vec2>> holes;
 			size_t start = colorZones.back().size();
-			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !graph._originalLinks[i].empty()) {
+			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !links[i].empty()) {
 					std::vector<glm::vec2> path;
 					int j = i;
 					do {
 						toSee[j] = false;
-						path.push_back(graph._points[j]);
-						if(graph._originalLinks[j].size() != 1) THROW_ERROR("Failed to merge color zones");
-						j = graph._originalLinks[j][0];
+						path.push_back(points[j]);
+						if(links[j].size() != 1) THROW_ERROR("Failed to merge color zones");
+						j = links[j][0];
 					} while(j != i);
 					path.push_back(path[0]);
 					float area = Globals::polygonArea(path);

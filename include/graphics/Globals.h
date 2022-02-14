@@ -31,18 +31,6 @@ bool IS_ISOTROPY(int);
 bool IS_VECTOR(int);
 bool IS_ORTHO(int);
 
-// Class for graphs
-class Graph {
-public:
-	std::vector<glm::vec2>              _points;
-	std::vector<std::vector<int>>       _originalLinks;
-	std::vector<std::vector<int>>       _cells;
-public:
-	Graph(){}
-	static glm::vec2 getCellCenter(const std::vector<int> &, const std::vector<glm::vec2> &);
-};
-
-
 // Class containing constants and some geometry primitives
 class Globals {
 public:

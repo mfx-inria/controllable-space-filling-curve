@@ -5,7 +5,7 @@
 #include "localAlgo/LocalOperator.h"
 
 #include "LBFGS/cvt.hpp"
-#include "tools/Matching.h"
+#include "initialization/CycleCreator.h"
 #include "tools/Random.h"
 
 const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
@@ -23,10 +23,10 @@ LocalOperator::LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&str
         : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones), _gen(std::mt19937(Globals::_seed)) {}
 
 void LocalOperator::setGraph(Graph &graph) {
-    Matching m(_border, graph);
+    CycleCreator m(_border, graph);
     _points = std::move(m._points);
     computeZone();
-    _originalLinks = std::move(m._originalLinks);
+    _originalLinks = std::move(m._links);
     _cLinks = std::move(m._cLinks);
 }
 

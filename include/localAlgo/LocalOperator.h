@@ -6,6 +6,7 @@
 #define HAMILTON_LOCALOPERATOR_H
 
 #include "ObjectiveFunctions.h"
+#include "initialization/GraphCreator.h"
 
 #include <random>
 

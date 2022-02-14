@@ -3,7 +3,7 @@
 //
 
 #include "tools/Layer.h"
-#include "managers/GraphCreator.h"
+#include "initialization/GraphCreator.h"
 
 void Layer::initLayer(const std::string &fileName, int layerIndex) {
 	std::vector<Shape> bounderies;
@@ -12,13 +12,12 @@ void Layer::initLayer(const std::string &fileName, int layerIndex) {
 	_operators.clear();
 	for(int i = 0; i < (int) bounderies.size(); ++i)
 		_operators.emplace_back(objZones[i], std::move(colorZones[i]), bounderies[i], layerIndex);
-
 }
 
 void Layer::initCycle(int layerIndex) {
 	for(int i = 0; i < (int) _operators.size(); ++i) {
 		Graph graph;
-		if(!initGraph(_operators[i].getBorder(), graph, layerIndex)) {
+		if(!Graph::initGraph(_operators[i].getBorder(), graph, layerIndex)) {
 			if(i+1 < (int) _operators.size()) _operators[i] = std::move(_operators.back());
 			_operators.pop_back();
 		} else {
