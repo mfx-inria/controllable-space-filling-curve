@@ -32,6 +32,11 @@ private:
 	std::queue<int> Q;
 	int S;
 
+	inline int base(int i) {
+		if(nodes[i].base == i) return i;
+		return nodes[i].base = base(nodes[i].base);
+	}
+
 	int augment(int i) {
 		nodes[i].init(i, S = i);
 		nodes[i].inQ = true;
@@ -41,7 +46,7 @@ private:
 			for(int j : nodes[i].link) {
 				Node &nj = nodes[j];
 				if(nj.seen != S) nj.init(j, S);
-				if(nj.base == ni.base || ni.match == j) continue;
+				if(base(j) == base(i) || ni.match == j) continue;
 				if(j == S) blossom(i, j);
 				else {
 					const int mj = nj.match;
@@ -73,31 +78,29 @@ private:
 
 	void blossom(int i, int j) {
 		int lca = LCA(i, j);
-		if(nodes[i].base != lca) contract(lca, i, j);
-		if(nodes[j].base != lca) contract(lca, j, i);
+		if(base(i) != lca) contract(lca, i, j);
+		if(base(j) != lca) contract(lca, j, i);
 	}
 
 	int LCA(int i, int j) {
 		static int A = 0; ++ A;
-		while(true) {
-			nodes[i=nodes[i].base].ancestor = A;
-			if(i == S) break;
-			i = nodes[nodes[i].match].father;
-		}
-		while(1) {
-			if(nodes[j=nodes[j].base].ancestor == A) return j;
-			j = nodes[nodes[j].match].father;
+		for(;true; std::swap(i, j)) if(i != -1) {
+			if(nodes[i=base(i)].ancestor == A) return i;
+			nodes[i].ancestor = A;
+			i = i == S ? -1 : nodes[nodes[i].match].father;
 		}
 	}
 
 	void contract(int lca, int i, int j) {
+		std::vector<int> ns;
 		do {
 			nodes[i].father = j;
 			j = nodes[i].match;
-			nodes[i].base = nodes[j].base = lca;
+			ns.push_back(i); ns.push_back(j);
 			if(!nodes[i].inQ) { nodes[i].inQ = true; Q.push(i); }
 			if(!nodes[j].inQ) { nodes[j].inQ = true; Q.push(j); }
 			i = nodes[j].father;
-		} while(nodes[i].base != lca);
+		} while(base(i) != lca);
+		for(int n : ns) nodes[n].base = lca;
 	}
 };

@@ -21,7 +21,7 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 	perfectMatching();
 	std::cerr << "here2" << std::endl;
 	switchLink();
-	for (const std::vector<int> &cell : graph._cells) {
+	for(const std::vector<int> &cell : graph._cells) {
 		if(cell.size() < 3) continue;
 
 		// Compute the center of the cell
@@ -51,64 +51,47 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 		_cLinks.emplace_back();
 
 		// Connect the center to the rest of the path
-		int A = -1, B;
+		int a, b;
 		int tmp = centerId;
 		std::unordered_set<int> seen = {tmp};
-		while (A == -1) {
-			// A = B       A --- B
-			//  \ /   ===>  \\ //
-			//   T            T
-			for (int i = 1; i < (int) _links[tmp].size(); i++) {
-				int a = _links[tmp][i];
-				for(int j = 0; j < i; ++j) {
-					const int b = _links[tmp][j];
-					if(std::find(_cLinks[a].begin(), _cLinks[a].end(), b) != _cLinks[a].end()) {
-						A = a;
-						B = b;
-					}
-				}
-				if(A != -1) break;
-			}
-
-			if (A == -1) {  // (A, B) not found
-				int C = -1, D;
-				//    C             C = new T //
-				//  // \\         /   \       //
-				// B --- D  ==>  B --- D      //
-				//  \   /         \\ //       //
-				//    T             T         //
-				for (int b : _links[tmp]) {
-					if(C != -1) break;
-					for (int c : _cLinks[b]) if(!seen.count(c)) {
-						int d = _cLinks[c][0] == b ? _cLinks[c][1] : _cLinks[c][0];
-						bool linkedB = false, linkedTmp = false;
-						for(int link : _links[d]) {
-							linkedB |= link == b;
-							linkedTmp |= link == tmp;
-						}
-						if (linkedB && linkedTmp) {
-							B = b;
-							C = c;
-							D = d;
-							break;
-						}
-					}
-				}
-				if(C != -1) {
-					removeLink(B, C);
-					removeLink(C, D);
-					createLink(B, tmp);
-					createLink(tmp, D);
-					tmp = C;
-					seen.insert(tmp);
-				} else THROW_ERROR("Failed linking cell center to the rest of the graph!");
-			} else { // (A, B) found
-				removeLink(A, B);
-				createLink(A, tmp);
-				createLink(tmp, B);
-				++ _nbConnectedPoints;
+		
+		findConnection:
+		// A = B       A --- B
+		//  \ /   ===>  \\ //
+		//   T            T
+		for(int i = 1; i < (int) _links[tmp].size(); ++i) {
+			a = _links[tmp][i];
+			for(int j = 0; j < i; ++j) {
+				b = _links[tmp][j];
+				if(std::find(_cLinks[a].begin(), _cLinks[a].end(), b) != _cLinks[a].end())
+					goto connectCenter;
 			}
 		}
+		//    D             D = new T //
+		//  // \\         /   \       //
+		// C --- E  ==>  C --- E      //
+		//  \   /         \\ //       //
+		//    T             T         //
+		for(int c : _links[tmp]) {
+			for(int d : _cLinks[c]) if(!seen.count(d)) {
+				const int e = _cLinks[d][_cLinks[d][0] == c];
+				if(std::find(_links[e].begin(), _links[e].end(), tmp) != _links[e].end()) {
+					removeLink(c, d);
+					removeLink(d, e);
+					createLink(c, tmp);
+					createLink(tmp, e);
+					seen.insert(tmp = d);
+					goto findConnection;
+				}
+			}
+		}
+		THROW_ERROR("Failed linking cell center to the rest of the graph!");
+		
+		connectCenter:
+		removeLink(a, b);
+		createLink(a, tmp);
+		createLink(tmp, b);
+		++ _nbConnectedPoints;
 	}
 	initUnion();
 	fuseIslands();
