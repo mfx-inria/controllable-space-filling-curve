@@ -7,7 +7,7 @@
 
 #include "graphics/Shape.h"
 #include "initialization/GraphCreator.h"
-#include "tools/Union.h"
+#include "initialization/UnionFind.h"
 
 class CycleCreator {
 public:
@@ -15,21 +15,21 @@ public:
 	std::vector<std::vector<int>>   _cLinks;
 	std::vector<std::vector<int>>   _links;
 	std::vector<glm::vec2>          _points;
-	Union                           _union;
+	UnionFind						_union;
 
 	CycleCreator(const Shape &shape, Graph &graph);
 
 private:
-	void    removeUnused(const Shape &);
 	void    checkInit();
 	void    perfectMatching();
 	void    switchLink();
-	void    initUnion();
+	void    addCenters(const Shape &shape, const Graph &graph);
 	void    fuseIslands();
+	void    removeUnused(const Shape &shape);
 	int     getNext(int, int);
 	void    createLink(int, int);
 	void    removeLink(int, int);
-	std::vector<int>    getIdxs(int, int);
+	std::vector<int>    getIdxs(int i);
 	std::vector<int>    getPath(int, int);
 };
 

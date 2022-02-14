@@ -214,16 +214,7 @@ void PointCVT::updateLink(const Eigen::VectorXd &x,
 				const int l = (k+1)%N;
 				if(l != i && l != j && Globals::intersect(points[i], points[k], points[j], points[l])) goto nextEdge;
 			}
-			for(int k = 0; k < (int) _shape->_points.size(); ++k) {
-				const int l = (k+1) % (int) _shape->_points.size();
-				if(Globals::intersect(points[i], _shape->_points[k], points[j], _shape->_points[l])) goto nextEdge;
-			}
-			for(const std::vector<glm::vec2> &hole : _shape->_holes) {
-				for(int k = 0; k < (int) hole.size(); ++k) {
-					const int l = (k+1) % (int) hole.size();
-					if(Globals::intersect(points[i], hole[k], points[j], hole[l])) goto nextEdge;
-				}
-			}
+			if(_shape->intersect(points[i], points[j])) goto nextEdge;
 			oriLink[i].push_back(j);
 			oriLink[j].push_back(i);
 			nextEdge:
@@ -563,20 +554,14 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	const auto check = [&](const glm::vec2 &a, int i)->bool {
 		int jb = (i + x.size() - 2) % x.size(), jc = (i + 2) % x.size();
 		const glm::vec2 b(_prevX(jb), _prevX(jb+1)), c(_prevX(jc), _prevX(jc+1));
-		for(int k = 1; k < (int) _shape->_points.size(); ++k)
-			if(Globals::intersect(a, _shape->_points[k-1], b, _shape->_points[k])
-			   || Globals::intersect(a, _shape->_points[k-1], c, _shape->_points[k])) return false;
-		for(const std::vector<glm::vec2> &in : _shape->_holes)
-			for(int k = 1; k < (int) in.size(); ++k)
-				if(Globals::intersect(a, in[k-1], b, in[k]) || Globals::intersect(a, in[k-1], c, in[k]))
-					return false;
+		if(_shape->intersect(a, b) || _shape->intersect(a, c)) return false;
 		for(int k = 0; k < (int) x.size(); k += 2) if(k != i) {
-				int k2 = (k+2) % x.size();
-				if(k2 == i) continue;
-				const glm::vec2 d(_prevX(k), _prevX(k+1)), e(_prevX(k2), _prevX(k2+1));
-				if(k != jb && k2 != jb && Globals::intersect(a, d, b, e)) return false;
-				if(k != jc && k2 != jc && Globals::intersect(a, d, c, e)) return false;
-			}
+			const int k2 = (k+2) % x.size();
+			if(k2 == i) continue;
+			const glm::vec2 d(_prevX(k), _prevX(k+1)), e(_prevX(k2), _prevX(k2+1));
+			if(k != jb && k2 != jb && Globals::intersect(a, d, b, e)) return false;
+			if(k != jc && k2 != jc && Globals::intersect(a, d, c, e)) return false;
+		}
 		return true;
 	};
 	for(int step = 0; step < 5; ++step) {

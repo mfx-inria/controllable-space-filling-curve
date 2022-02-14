@@ -31,7 +31,6 @@ add_executable(${PROJECT_NAME}
 	src/managers/GeneticAlgorithm.cpp
 	src/managers/Printer.cpp
 	src/tools/Layer.cpp
-	src/tools/Union.cpp
 )
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}

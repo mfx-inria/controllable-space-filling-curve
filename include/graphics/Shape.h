@@ -19,6 +19,7 @@ public:
 
 	bool isNear(const glm::vec2 &p, float eps2=1e-10f) const;
 	bool isInside(const glm::vec2 &p) const;
+	bool intersect(const glm::vec2 &a, const glm::vec2 &b) const;
 	void getInter(const glm::vec2 &a, const glm::vec2 &b, std::vector<float> &ts) const;
 	
 	void triangulate();

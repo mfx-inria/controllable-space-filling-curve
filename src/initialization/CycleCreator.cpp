@@ -17,10 +17,18 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 	for(const std::vector<int> &link : _links) if(link.size() > 3)
 		THROW_ERROR(str_format("Graph is not 3-connected! (valence %d found)", link.size()));
 	
-	std::cerr << "here" << std::endl;
 	perfectMatching();
-	std::cerr << "here2" << std::endl;
 	switchLink();
+	addCenters(shape, graph);
+	_union = UnionFind(_points.size());
+	for(int i = 0; i < (int) _points.size(); ++i)
+		for(int j : _cLinks[i])
+			_union.merge(i, j);
+	fuseIslands();
+	removeUnused(shape);
+}
+
+void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 	for(const std::vector<int> &cell : graph._cells) {
 		if(cell.size() < 3) continue;
 
@@ -93,27 +101,14 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 		createLink(tmp, b);
 		++ _nbConnectedPoints;
 	}
-	initUnion();
-	fuseIslands();
-	removeUnused(shape);
-}
-
-void CycleCreator::initUnion() {
-	_union = Union(_points.size());
-	for(int i = 0; i < (int) _points.size(); ++i)
-		for(int j : _cLinks[i])
-			_union.merge(i, j);
 }
 
 std::vector<int> CycleCreator::getPath(int start, int end) {
 	if(std::find(_links[start].begin(), _links[start].end(), end) != _links[start].end())
 		return {start, end};
-	std::vector<int>::iterator it = _links[start].begin();
-	while(true)  {
+	for(int node : _links[start]) {
 		std::vector<int> path = { start };
-		it = std::find_if(it, _links[start].end(), [&](int link) { return _cLinks[link].empty(); });
 		int prev = start;
-		int node = *it;
 		while(node != -1) {
 			path.push_back(node);
 			int next = -1;
@@ -128,60 +123,164 @@ std::vector<int> CycleCreator::getPath(int start, int end) {
 			node = next;
 		}
 	}
+	THROW_ERROR("No path found!");
 }
 
-void CycleCreator::removeUnused(const Shape &border) {
+std::vector<int> CycleCreator::getIdxs(int i) {
+	std::unordered_set<int> ans;
+	for(int node : _links[i]) if(_cLinks[node].empty()) {
+		int prev = i;
+		while(node != -1) {
+			int next = -1;
+			for(int i : _links[node]) if(i != prev) {
+				if(_cLinks[i].empty()) next = i;
+				else ans.insert(i);
+			}
+			prev = node;
+			node = next;
+		}
+	} else ans.insert(node);
+	return std::vector<int>(ans.begin(), ans.end());
+}
+
+void CycleCreator::fuseIslands() {
+	if(_union.fullyMerged(_nbConnectedPoints)) return;
+	const int N = _points.size();
+	// i ==== k       i ---- k
+	// |      |  ==>  ||    ||
+	// j ==== l       j ---- l
+	for(int i = 0; i < N; ++i) if(!_cLinks[i].empty()) {
+		for(int j : getIdxs(i)) if(!_union.same(i, j)) {
+			for(int k : _cLinks[i]) for(int l : getIdxs(k))
+				if(l == _cLinks[j][0] || l == _cLinks[j][1]) {
+					const std::vector<int> path = getPath(i, j), path2 = getPath(l, k);
+					_nbConnectedPoints += path.size() + path2.size() - 4;
+					removeLink(i, k);
+					removeLink(j, l);
+					for(const std::vector<int> *p : {&path, &path2})
+						for(int i = 1; i < (int) p->size(); ++i) {
+							_union.merge(p->at(i), p->at(i-1));
+							createLink(p->at(i), p->at(i-1));
+						}
+					if(_union.fullyMerged(_nbConnectedPoints)) return;
+					goto found_flip;
+				}
+			found_flip: continue;
+		}
+	}
+	// i        a -- b
+	// |  ==>  ||    ||
+	// j        c -- d
+	for(int i = 0; i < N; ++i) if(!_cLinks[i].empty())
+		for(int j : _links[i]) if(j < N && !_union.same(i, j) && !_cLinks[j].empty()) {
+			glm::vec2 a = _points[i];
+			glm::vec2 b = _points[i];
+			glm::vec2 c = _points[j];
+			glm::vec2 d = _points[j];
+			glm::vec2 u = _points[_cLinks[i][0]] - _points[i];
+			glm::vec2 v = _points[_cLinks[i][1]] - _points[i];
+			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[j] - _points[i]) > 0.f) a += 2e-2f * u;
+			else b += 2e-2f * v;
+			u = _points[_cLinks[j][0]] - _points[j];
+			v = _points[_cLinks[j][1]] - _points[j];
+			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[i] - _points[j]) > 0.f) c += 2e-2f * u;
+			else d += 2e-2f * v;
+			if(Globals::intersect(a, b, c, d)) {
+				std::swap(a, b);
+				std::swap(_cLinks[i][0], _cLinks[i][1]);
+			}
+			_points[i] = a;
+			_points[j] = c;
+			const int k = _points.size();
+			_points.push_back(b);
+			_points.push_back(d);
+			_links.emplace_back();
+			_links.emplace_back();
+			_cLinks.emplace_back();
+			_cLinks.emplace_back();
+			int o = _cLinks[i][1];
+			removeLink(i, o);
+			createLink(k, o);
+			o = _cLinks[j][1];
+			removeLink(j, o);
+			createLink(k+1, o);
+			createLink(i, j);
+			createLink(k, k+1);
+			for(int x = 0; x < (int) _links[i].size();) {
+				int l = _links[i][x];
+				const glm::vec2 &e = _points[l];
+				if(Globals::intersect(a, b, e, d)) {
+					_links[i][x] = _links[i].back();
+					_links[i].pop_back();
+					int y = 0;
+					while(_links[l][y] != i) ++y;
+					_links[l][y] = _links[l].back();
+					_links[l].pop_back();
+				} else ++x;
+				if(!Globals::intersect(b, a, e, c)) {
+					_links[k].push_back(l);
+					_links[l].push_back(k);
+				}
+			}
+			for(int x = 0; x < (int) _links[j].size();) {
+				int l = _links[j][x];
+				const glm::vec2 &e = _points[l];
+				if(Globals::intersect(c, b, e, d)) {
+					_links[j][x] = _links[j].back();
+					_links[j].pop_back();
+					int y = 0;
+					while(_links[l][y] != j) ++y;
+					_links[l][y] = _links[l].back();
+					_links[l].pop_back();
+				} else ++x;
+				if(!Globals::intersect(d, a, e, c)) {
+					_links[k+1].push_back(l);
+					_links[l].push_back(k+1);
+				}
+			}
+			_links[i].push_back(k);
+			_links[k].push_back(i);
+			_links[j].push_back(k+1);
+			_links[k+1].push_back(j);
+			_links[k].push_back(k+1);
+			_links[k+1].push_back(k);
+			_union.merge(i, j);
+			if(_union.fullyMerged(_nbConnectedPoints)) return;
+		}
+	THROW_ERROR("Failed connecting disjoint cycles!");
+}
+
+void CycleCreator::removeUnused(const Shape &shape) {
 	std::vector<int> newIndex(_points.size(), -1);
 	int newSize = 0;
 	for(int i = 0; i < (int) newIndex.size(); ++i) {
 		if(_cLinks[i].empty()) {
-			for(int j : _links[i]) if(!_cLinks[j].empty()) {
-				std::vector<int> js = getIdxs(i, j);
-				js.push_back(j);
-				for(int k = 1; k < (int) js.size(); ++k)
-					for(int l = 0; l < k; ++l)
-						if(std::find(_links[js[k]].begin(), _links[js[k]].end(), js[l]) == _links[js[k]].end()) {
-							bool bad = false;
-							glm::vec2 w = _points[js[l]] - _points[js[k]];
-							w *= 1e-5f / glm::length(w);
-							glm::vec2 a = _points[js[k]] + w, b = _points[js[l]] - w;
-							for(int m : js) if(!bad)
-								for(int n : _links[m]) if(!_cLinks[n].empty())
-									if(Globals::intersect(a, _points[m], b, _points[n])) {
-										bad = true;
-										break;
-									}
-							if(bad) continue;
-							for(int m = 1; m < (int) border._points.size(); ++m)
-								if(Globals::intersect(_points[js[l]], border._points[m-1], _points[js[k]], border._points[m])) {
-									bad = true;
-									break;
-								}
-							if(bad) continue;
-							for(const std::vector<glm::vec2> &hole : border._holes) {
-								for(int m = 1; m < (int) hole.size(); ++m)
-									if(Globals::intersect(_points[js[l]], hole[m-1], _points[js[k]], hole[m])) {
-										bad = true;
-										break;
-									}
-								if(bad) break;
-							}
-							if(bad) continue;
-							_links[js[k]].push_back(js[l]);
-							_links[js[l]].push_back(js[k]);
-						}
-				break;
+			std::vector<int> js = getIdxs(i);
+			for(int k = 1; k < (int) js.size(); ++k) for(int l = 0; l < k; ++l) {
+				if(std::find(_links[js[k]].begin(), _links[js[k]].end(), js[l]) == _links[js[k]].end()) {
+					glm::vec2 w = _points[js[l]] - _points[js[k]];
+					w *= 1e-5f / glm::length(w);
+					const glm::vec2 a = _points[js[k]] + w, b = _points[js[l]] - w;
+					for(int m : js) for(int n : _links[m]) if(!_cLinks[n].empty())
+						if(Globals::intersect(a, _points[m], b, _points[n]))
+							goto intersect;
+					if(shape.intersect(_points[js[l]], _points[js[k]])) continue;
+					_links[js[k]].push_back(js[l]);
+					_links[js[l]].push_back(js[k]);
+					intersect: continue;
+				}
 			}
 		} else newIndex[i] = newSize++;
 	}
 	for(int i = 0; i < (int) newIndex.size(); ++i) {
-		int k = newIndex[i];
+		const int k = newIndex[i];
 		if(k == -1) continue;
 		for(int &j : _cLinks[i]) j = newIndex[j];
 		int s = 0;
 		for(int j : _links[i]) if(newIndex[j] != -1)
 			_links[i][s++] = newIndex[j]; 
 		_links[i].resize(s);
+		_links[i].shrink_to_fit();
 		if(k < i) {
 			_points[k] = _points[i];
 			_links[k] = std::move(_links[i]);
@@ -191,144 +290,6 @@ void CycleCreator::removeUnused(const Shape &border) {
 	_points.resize(newSize);
 	_links.resize(newSize);
 	_cLinks.resize(newSize);
-}
-
-std::vector<int> CycleCreator::getIdxs(int node, int parent) {
-	if(!_cLinks[node].empty()) return {node};
-	std::vector<int> ans;
-	int prev = parent;
-	while(node != -1) {
-		int next = -1;
-		for(int i : _links[node]) if(i != parent && i != prev) {
-			if(_cLinks[i].empty()) next = i;
-			else if(std::find(ans.begin(), ans.end(), i) == ans.end()) ans.push_back(i);
-		}
-		prev = node;
-		node = next;
-	}
-	return ans;
-}
-
-void CycleCreator::fuseIslands() {
-	if(_union.fullyMerged(_nbConnectedPoints)) return;
-	int flip = 0;
-	int N = _points.size();
-	// i ==== k       i ---- k
-	// |      |  ==>  ||    ||
-	// j ==== l       j ---- l
-	for(int i = 0; i < N; ++i) if(!_cLinks[i].empty()) {
-		for(int j0 : _links[i]) for(int j : getIdxs(j0, i)) {
-			if(!_union.same(i, j)) {
-				bool found = false;
-				for(int k : _cLinks[i]) if(!found) {
-					for(int l0 : _links[k]) if(!found) for(int l : getIdxs(l0, k)) {
-						if(l == _cLinks[j][0] || l == _cLinks[j][1]) {
-							std::vector<int> path = getPath(i, j), path2 = getPath(l, k);
-							_nbConnectedPoints += path.size() + path2.size() - 4;
-							removeLink(i, k);
-							removeLink(j, l);
-							for (int inc = 1; inc < (int) path.size(); ++inc) {
-								_union.merge(path[inc], path[inc - 1]);
-								createLink(path[inc], path[inc - 1]);
-							}
-							for (int inc = 1; inc < (int) path2.size(); ++inc) {
-								_union.merge(path2[inc], path2[inc - 1]);
-								createLink(path2[inc], path2[inc - 1]);
-							}
-							++ flip;
-							if(_union.fullyMerged(_nbConnectedPoints)) return;
-							found = true;
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-	// i        a -- b
-	// |  ==>  ||    ||
-	// j        c -- d
-	int doubled = 0;
-	for(int i = 0; i < N; ++i) if(!_cLinks[i].empty()) {
-		for(int j : _links[i]) if(j < N && !_union.same(i, j) && !_cLinks[j].empty()) {
-				++ doubled;
-				// Maybe we will need to optimize the position of new points
-				glm::vec2 a = _points[i];
-				glm::vec2 b = _points[i];
-				glm::vec2 c = _points[j];
-				glm::vec2 d = _points[j];
-				glm::vec2 u = _points[_cLinks[i][0]] - _points[i];
-				glm::vec2 v = _points[_cLinks[i][1]] - _points[i];
-				if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[j] - _points[i]) > 0.f) a += 2e-2f * u;
-				else b += 2e-2f * v;
-				u = _points[_cLinks[j][0]] - _points[j];
-				v = _points[_cLinks[j][1]] - _points[j];
-				if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[i] - _points[j]) > 0.f) c += 2e-2f * u;
-				else d += 2e-2f * v;
-				if(Globals::intersect(a, b, c, d)) {
-					std::swap(a, b);
-					std::swap(_cLinks[i][0], _cLinks[i][1]);
-				}
-				_points[i] = a;
-				_points[j] = c;
-				int k = _points.size();
-				_points.push_back(b);
-				_points.push_back(d);
-				_links.emplace_back();
-				_links.emplace_back();
-				_cLinks.emplace_back();
-				_cLinks.emplace_back();
-				int o = _cLinks[i][1];
-				removeLink(i, o);
-				createLink(k, o);
-				o = _cLinks[j][1];
-				removeLink(j, o);
-				createLink(k+1, o);
-				createLink(i, j);
-				createLink(k, k+1);
-				for(int x = 0; x < (int) _links[i].size();) {
-					int l = _links[i][x];
-					const glm::vec2 &e = _points[l];
-					if(Globals::intersect(a, b, e, d)) {
-						_links[i][x] = _links[i].back();
-						_links[i].pop_back();
-						int y = 0;
-						while(_links[l][y] != i) ++y;
-						_links[l][y] = _links[l].back();
-						_links[l].pop_back();
-					} else ++x;
-					if(!Globals::intersect(b, a, e, c)) {
-						_links[k].push_back(l);
-						_links[l].push_back(k);
-					}
-				}
-				for(int x = 0; x < (int) _links[j].size();) {
-					int l = _links[j][x];
-					const glm::vec2 &e = _points[l];
-					if(Globals::intersect(c, b, e, d)) {
-						_links[j][x] = _links[j].back();
-						_links[j].pop_back();
-						int y = 0;
-						while(_links[l][y] != j) ++y;
-						_links[l][y] = _links[l].back();
-						_links[l].pop_back();
-					} else ++x;
-					if(!Globals::intersect(d, a, e, c)) {
-						_links[k+1].push_back(l);
-						_links[l].push_back(k+1);
-					}
-				}
-				_links[i].push_back(k);
-				_links[k].push_back(i);
-				_links[j].push_back(k+1);
-				_links[k+1].push_back(j);
-				_links[k].push_back(k+1);
-				_links[k+1].push_back(k);
-				_union.merge(i, j);
-				if(_union.fullyMerged(_nbConnectedPoints)) return;
-			}
-	}
-	THROW_ERROR("Failed connecting disjoint cycles!");
 }
 
 void CycleCreator::perfectMatching() {

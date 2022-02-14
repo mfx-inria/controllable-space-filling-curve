@@ -32,6 +32,17 @@ bool Shape::isInside(const glm::vec2 &p) const {
 	return true;
 }
 
+bool Shape::intersect(const glm::vec2 &a, const glm::vec2 &b) const {
+	for(int i = 1; i < (int) _points.size(); ++i)
+		if(Globals::intersect(a, _points[i-1], b, _points[i]))
+			return true;
+	for(const std::vector<glm::vec2> &hole : _holes)
+		for(int i = 1; i < (int) hole.size(); ++i)
+			if(Globals::intersect(a, hole[i-1], b, hole[i]))
+				return true;
+	return false;
+}
+
 void Shape::getInter(const glm::vec2 &a, const glm::vec2 &b, std::vector<float> &ts) const {
 	float t;
 	for(int i = 1; i < (int) _points.size(); ++i)
