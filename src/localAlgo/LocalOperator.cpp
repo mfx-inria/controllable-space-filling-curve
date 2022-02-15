@@ -19,14 +19,14 @@ const std::vector<std::vector<std::pair<int, int>>> LocalOperator::_segments = {
         {{0, 2}, {1, 3}}                    // zigzag cand
 };
 
-LocalOperator::LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex)
-        : ObjectiveFunctions(std::move(zones), std::move(border), layerIndex), _strokeZones(strokeZones), _gen(std::mt19937(Globals::_seed)) {}
+LocalOperator::LocalOperator(Shape &shape, std::vector<Shape> &zones, std::vector<Shape> &&colorZones, int layerIndex)
+        : ObjectiveFunctions(std::move(shape), std::move(zones), layerIndex), _colorZones(colorZones), _gen(std::mt19937(Globals::_seed)) {}
 
 void LocalOperator::setGraph(Graph &graph) {
-    CycleCreator m(_border, graph);
+    CycleCreator m(_shape, graph);
     _points = std::move(m._points);
     computeZone();
-    _originalLinks = std::move(m._links);
+    _links = std::move(m._links);
     _cLinks = std::move(m._cLinks);
 }
 
@@ -166,12 +166,12 @@ void LocalOperator::optimize()
     }
 
     // Smoother
-    Smoother smoother(&_border, &_zones, &_strokeZones, _vecArea, _layerIndex);
+    Smoother smoother(&_shape, &_objZones, &_colorZones, _vecArea, _layerIndex);
     smoother.optimize(x);
 
     // Update Link
-    PointCVT cvt(&_border);
-    cvt.updateLink(x, _points, _originalLinks, _cLinks);
+    PointCVT cvt(&_shape);
+    cvt.updateLink(x, _points, _links, _cLinks);
     computeZone();
 
     // Compute radii for final
@@ -183,7 +183,7 @@ void LocalOperator::optimize()
     for(const glm::vec3 &p : _final.first) {
         glm::vec2 v(p.x, p.y);
         int col = 0;
-        for(const Shape &zone : _strokeZones) if (zone.isInside(v)) {
+        for(const Shape &zone : _colorZones) if (zone.isInside(v)) {
                 col = zone._printColor;
                 break;
             }
@@ -238,14 +238,14 @@ std::pair<float, std::vector<int>> LocalOperator::checkFlip(const std::vector<in
     std::pair<float, std::vector<int>> ans = { std::numeric_limits<float>::max(), {} };
     std::vector<int> tmp_nodes(nodes.begin(), nodes.end());
 
-    if (!isLinked(_originalLinks[nodes[0]], nodes[3]))
+    if (!isLinked(_links[nodes[0]], nodes[3]))
         return ans;
 
     std::vector<int> link2;
-    for (int secondLink : _originalLinks[nodes[2]])
+    for (int secondLink : _links[nodes[2]])
         if(secondLink != nodes[0] && secondLink != nodes[1] && secondLink != nodes[3])
             link2.push_back(secondLink);
-    for (int firstLink : _originalLinks[nodes[1]])
+    for (int firstLink : _links[nodes[1]])
         if(firstLink != nodes[0] && firstLink != nodes[2] && firstLink != nodes[3])
             for (int secondLink : link2)
                 if(isLinked(_cLinks[firstLink], secondLink)) {
@@ -271,12 +271,12 @@ std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vect
     int inds[3] = { _index[nodes[0]], _index[nodes[1]], _index[nodes[2]] };
 
     std::vector<int> link1;
-    for (int v1 : _originalLinks[nodes[1]])
+    for (int v1 : _links[nodes[1]])
         if(v1 != nodes[0] && v1 != nodes[2])
             link1.push_back(v1);
 
     std::vector<std::pair<int, int>> first_pairs;
-    for(int v0 : _originalLinks[nodes[0]])
+    for(int v0 : _links[nodes[0]])
         if(v0 != nodes[2] && !isLinked(_cLinks[v0], nodes[0]))
             for(int v1 : link1)
                 if(isLinked(_cLinks[v0], v1))
@@ -284,7 +284,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vect
 
     if(first_pairs.empty()) return ans;
 
-    for(int v2 : _originalLinks[nodes[2]])
+    for(int v2 : _links[nodes[2]])
         if(v2 != nodes[0] && !isLinked(_cLinks[v2], nodes[2]))
             for(int v1 : link1)
                 if(isLinked(_cLinks[v1], v2))
@@ -340,10 +340,10 @@ std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<i
     std::pair<float, std::vector<int>> ans = { std::numeric_limits<float>::max(), {} };
     std::vector<int> tmp_nodes(nodes.begin(), nodes.begin()+3);
 
-    if (!isLinked(_originalLinks[nodes[0]], nodes[2]))
+    if (!isLinked(_links[nodes[0]], nodes[2]))
         return ans;
 
-    const std::vector<int> &link1 = _originalLinks[nodes[1]];
+    const std::vector<int> &link1 = _links[nodes[1]];
     for(int i = 1; i < (int) link1.size(); ++i) if(link1[i] != nodes[0] && link1[i] != nodes[2])
             for(int j = 0; j < i; ++j)
                 if(isLinked(_cLinks[link1[i]], link1[j]) && link1[j] != nodes[0] && link1[j] != nodes[2]) {
@@ -364,8 +364,8 @@ std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<i
 
 std::pair<float, std::vector<int>> LocalOperator::checkZigZag(const std::vector<int> &nodes)
 {
-    if (isLinked(_originalLinks[nodes[0]], nodes[2]) &&
-        isLinked(_originalLinks[nodes[1]], nodes[3]))
+    if (isLinked(_links[nodes[0]], nodes[2]) &&
+        isLinked(_links[nodes[1]], nodes[3]))
         return { checkDirection(nodes, _segments[6], _segments[7]), nodes };
     return { std::numeric_limits<float>::max(), {} };
 }
@@ -380,6 +380,6 @@ const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>& LocalOperator::
     return _final;
 }
 
-const std::vector<Shape>& LocalOperator::getStrokeZones() const {
-    return _strokeZones;
+const std::vector<Shape>& LocalOperator::getColorZones() const {
+    return _colorZones;
 }

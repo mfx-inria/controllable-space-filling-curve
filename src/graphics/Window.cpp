@@ -160,7 +160,7 @@ void Window::displayCycle() {
 	// Show background
 	glBegin(GL_TRIANGLES);
 	for(const LocalOperator &op : layer._operators) {
-		for(const Shape &zone : (_showPrintColor ? op.getStrokeZones() : op.getZones())) {
+		for(const Shape &zone : (_showPrintColor ? op.getColorZones() : op.getObjZones())) {
 			if(_showPrintColor) COLOR_INT(zone._printColor);
 			else glColor3f(COLORS[zone._objcetive].x, COLORS[zone._objcetive].y, COLORS[zone._objcetive].z);
 			for(uint i : zone._triangles[0]) drawVertex(zone._points[i]);
@@ -175,7 +175,7 @@ void Window::displayCycle() {
 	glBegin(GL_LINES);
 	glColor3f(0.38f, 0.51f, 0.71f); // blue
 	for(const LocalOperator &op : layer._operators) {
-		for(const Shape &zone : (_showPrintColor ? op.getStrokeZones() : op.getZones())) {
+		for(const Shape &zone : (_showPrintColor ? op.getColorZones() : op.getObjZones())) {
 			for(int i = 1; i < (int) zone._points.size(); ++i) {
 				drawVertex(zone._points[i - 1]);
 				drawVertex(zone._points[i]);
@@ -199,7 +199,7 @@ void Window::displayCycle() {
 			glLineWidth(14.0f);
 			for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
 				const int z = op._zone[k];
-				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getZones()[z]._printColor) : COLORS[op.getZones()[z]._objcetive];
+				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getObjZones()[z]._printColor) : COLORS[op.getObjZones()[z]._objcetive];
 				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
 				drawVertex(points[k]);
 			}

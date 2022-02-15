@@ -6,12 +6,12 @@
 #include "initialization/GraphCreator.h"
 
 void Layer::initLayer(const std::string &fileName, int layerIndex) {
-	std::vector<Shape> bounderies;
+	std::vector<Shape> shapes;
 	std::vector<std::vector<Shape>> objZones, colorZones;
-	Shape::read(fileName, bounderies, objZones, colorZones, layerIndex);
+	Shape::read(fileName, shapes, objZones, colorZones, layerIndex);
 	_operators.clear();
-	for(int i = 0; i < (int) bounderies.size(); ++i)
-		_operators.emplace_back(objZones[i], std::move(colorZones[i]), bounderies[i], layerIndex);
+	for(int i = 0; i < (int) shapes.size(); ++i)
+		_operators.emplace_back(shapes[i], objZones[i], std::move(colorZones[i]), layerIndex);
 }
 
 void Layer::initCycle(int layerIndex) {

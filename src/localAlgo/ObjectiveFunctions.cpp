@@ -7,15 +7,15 @@
 
 #include <algorithm>
 
-ObjectiveFunctions::ObjectiveFunctions(std::vector<Shape> &&zones, Shape &&border, int layerIndex)
-        : _zones(zones), _border(border), _layerIndex(layerIndex)
+ObjectiveFunctions::ObjectiveFunctions(Shape &&shape, std::vector<Shape> &&objZones, int layerIndex)
+        : _shape(shape), _objZones(objZones), _layerIndex(layerIndex)
 { }
 
 void ObjectiveFunctions::computeZone() {
     _zone.resize(_points.size());
     for(int i = 0; i < (int) _points.size(); ++i) {
-        for(int j = 0; j < (int) _zones.size(); ++j) {
-            if(_zones[j].isInside(_points[i])) {
+        for(int j = 0; j < (int) _objZones.size(); ++j) {
+            if(_objZones[j].isInside(_points[i])) {
                 _zone[i] = j;
                 break;
             }
@@ -25,15 +25,15 @@ void ObjectiveFunctions::computeZone() {
 
 void ObjectiveFunctions::computeData() {
     // Init usefull data
-    _distribs.resize(_zones.size());
+    _distribs.resize(_objZones.size());
     _vecWeight = 0.f;
     _vecScore = 0.f;
     _vecArea = 0.f;
-    for(int i = 0; i < (int) _zones.size(); ++i) {
-        if(IS_ISOTROPY(_zones[i]._objcetive))
+    for(int i = 0; i < (int) _objZones.size(); ++i) {
+        if(IS_ISOTROPY(_objZones[i]._objcetive))
             _distribs[i].assign(_nSamples, 0.f);
-        else if(IS_VECTOR(_zones[i]._objcetive))
-            _vecArea += _zones[i]._area;
+        else if(IS_VECTOR(_objZones[i]._objcetive))
+            _vecArea += _objZones[i]._area;
     }
     _nCrosses = 0;
 
@@ -49,11 +49,11 @@ void ObjectiveFunctions::computeData() {
 
 void ObjectiveFunctions::calculateScore() {
     // Compte segment cell radius for alignment objective
-    _segCellRadius = .2f * _border._area / _points.size();
+    _segCellRadius = .2f * _shape._area / _points.size();
     int nLink = 0;
     float sumLenLink = 0.f;
     for(int i = 1; i < (int) _points.size(); ++i)
-        for(int j : _originalLinks[i]) if(j < i) {
+        for(int j : _links[i]) if(j < i) {
                 ++ nLink;
                 sumLenLink += glm::distance(_points[i], _points[j]);
             }
@@ -63,16 +63,16 @@ void ObjectiveFunctions::calculateScore() {
     _segments.resize(_points.size());
     for(int i = 0; i < (int) _points.size(); ++i) {
         _segments[i].clear();
-        _segments[i].reserve(_originalLinks[i].size());
+        _segments[i].reserve(_links[i].size());
         int k = _zone[i];
-        for(int j : _originalLinks[i]) {
+        for(int j : _links[i]) {
             _segments[i].emplace_back();
             std::vector<float> ts;
-            _zones[k].getInter(_points[i], _points[j], ts);
+            _objZones[k].getInter(_points[i], _points[j], ts);
             if(ts.empty()) {
-                if(IS_VECTOR(_zones[k]._objcetive))
+                if(IS_VECTOR(_objZones[k]._objcetive))
                     createEdgeVec(_points[i], _points[j], _segments[i].back().vecW, _segments[i].back().vecS);
-                else if(IS_ISOTROPY(_zones[k]._objcetive))
+                else if(IS_ISOTROPY(_objZones[k]._objcetive))
                     _segments[i].back().iso.push_back(createEdgeIso(k, _points[j] - _points[i]));
                 continue;
             }
@@ -83,21 +83,21 @@ void ObjectiveFunctions::calculateScore() {
             while(true) {
                 std::sort(ts.begin(), ts.end());
                 if(_zone[j] == l) ts.push_back(1.f);
-                for(float t : ts) tss.emplace_back(t, _zones[l]._printColor);
-                if(IS_VECTOR(_zones[l]._objcetive))
+                for(float t : ts) tss.emplace_back(t, _objZones[l]._printColor);
+                if(IS_VECTOR(_objZones[l]._objcetive))
                     for(int m = 0; m < (int) ts.size(); m += 2)
                         createEdgeVec(_points[i]+ts[m]*v, _points[i]+ts[m+1]*v, _segments[i].back().vecW, _segments[i].back().vecS);
-                else if(IS_ISOTROPY(_zones[l]._objcetive)) {
+                else if(IS_ISOTROPY(_objZones[l]._objcetive)) {
                     float t = 0;
                     for(int m = 0; m < (int) ts.size(); m += 2) t += ts[m+1] - ts[m];
                     _segments[i].back().iso.push_back(createEdgeIso(l, t*v));
                 }
                 ts.clear();
                 do {
-                    l = (l+1) % _zones.size();
+                    l = (l+1) % _objZones.size();
                     if(l == k) break;
-                    if(_zones[l]._objcetive != NOTHING)
-                        _zones[l].getInter(_points[i], _points[j], ts);
+                    if(_objZones[l]._objcetive != NOTHING)
+                        _objZones[l].getInter(_points[i], _points[j], ts);
                 } while(ts.empty());
                 if(l == k) break;
             }
@@ -121,7 +121,7 @@ void ObjectiveFunctions::calculateScore() {
 
 const ObjectiveFunctions::Segment& ObjectiveFunctions::getSegment(int i, int j) {
     int k = 0;
-    while(k < (int) _originalLinks[i].size() && _originalLinks[i][k] != j) ++k;
+    while(k < (int) _links[i].size() && _links[i][k] != j) ++k;
     return _segments[i][k];
 }
 
@@ -149,14 +149,14 @@ void ObjectiveFunctions::rmSegment(int i, int j) {
 
 float ObjectiveFunctions::getMeanScore() {
     float isoScore = 0.f;
-    for(int i = 0; i < (int) _zones.size(); ++i) {
-        if(_zones[i]._objcetive == ANISOTROPY)
-            isoScore += _zones[i]._area * (1.f - getWassersteinDistance(i));
-        else if(_zones[i]._objcetive == ISOTROPY)
-            isoScore += _zones[i]._area * getWassersteinDistance(i);
+    for(int i = 0; i < (int) _objZones.size(); ++i) {
+        if(_objZones[i]._objcetive == ANISOTROPY)
+            isoScore += _objZones[i]._area * (1.f - getWassersteinDistance(i));
+        else if(_objZones[i]._objcetive == ISOTROPY)
+            isoScore += _objZones[i]._area * getWassersteinDistance(i);
     }
     float vecScore = _vecArea * (_vecWeight <= 0.f ? .5f : _vecScore / _vecWeight);
-    return (isoScore + vecScore) / _border._area + _nCrosses;
+    return (isoScore + vecScore) / _shape._area + _nCrosses;
 }
 
 float ObjectiveFunctions::checkDirection(const std::vector<int> &points,
@@ -297,7 +297,7 @@ const std::vector<std::vector<int>>& ObjectiveFunctions::getLinks() const
 
 std::tuple<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &, const std::vector<std::vector<int>> &> ObjectiveFunctions::getGraph() const
 {
-    return {_points, _cLinks, _originalLinks};
+    return {_points, _cLinks, _links};
 }
 
 std::pair<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &> ObjectiveFunctions::getCycle() const
@@ -305,8 +305,8 @@ std::pair<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &>
     return {_points, _cLinks};
 }
 
-const std::vector<Shape>& ObjectiveFunctions::getZones() const {
-    return _zones;
+const std::vector<Shape>& ObjectiveFunctions::getObjZones() const {
+    return _objZones;
 }
 
 float ObjectiveFunctions::getScore() const {
@@ -314,16 +314,16 @@ float ObjectiveFunctions::getScore() const {
 }
 
 float ObjectiveFunctions::getArea() const {
-    return _border._area;
+    return _shape._area;
 }
 
-int ObjectiveFunctions::getStrokeColor(int i) const {
-    return _zones[_zone[i]]._printColor;
+int ObjectiveFunctions::getColor(int i) const {
+    return _objZones[_zone[i]]._printColor;
 }
 
 const Shape& ObjectiveFunctions::getBorder() const
 {
-    return _border;
+    return _shape;
 }
 
 

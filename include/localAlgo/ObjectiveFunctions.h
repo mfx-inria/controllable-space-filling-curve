@@ -24,11 +24,11 @@ struct Segment {
 };
 
 protected:
+	Shape                           _shape;
+	std::vector<Shape>              _objZones;
 	std::vector<glm::vec2>          _points;
+	std::vector<std::vector<int>>   _links;
 	std::vector<std::vector<int>>   _cLinks;
-	std::vector<std::vector<int>>   _originalLinks;
-	std::vector<Shape>              _zones;
-	Shape                           _border;
 
 	int                                     _layerIndex;
 	float                                   _score = 0.f;
@@ -51,7 +51,7 @@ public:
 
 public:
 	ObjectiveFunctions() = default;
-	ObjectiveFunctions(std::vector<Shape> &&, Shape &&, int);
+	ObjectiveFunctions(Shape &&shape, std::vector<Shape> &&objZones, int layerIndex);
 
 	float   checkDirection(const std::vector<int> &, const std::vector<std::pair<int, int>> &, const std::vector<std::pair<int, int>> &);
 	void    applyShift(const std::vector<int> &, const std::vector<std::pair<int, int>> &, const std::vector<std::pair<int, int>> &);
@@ -63,8 +63,8 @@ public:
 	std::tuple<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &, const std::vector<std::vector<int>> &>    getGraph() const;
 	std::pair<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &>                                            getCycle() const;
 	const Shape &               getBorder() const;
-	const std::vector<Shape>&   getZones() const;
-	int                         getStrokeColor(int) const;
+	const std::vector<Shape>&   getObjZones() const;
+	int                         getColor(int) const;
 	float                       getArea() const;
 
 protected:

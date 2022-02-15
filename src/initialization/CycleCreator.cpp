@@ -7,6 +7,7 @@
 #include "tools/Random.h"
 
 #include <algorithm>
+#include <set>
 #include <unordered_set>
 #include <iostream>
 
@@ -26,6 +27,86 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 			_union.merge(i, j);
 	fuseIslands();
 	removeUnused(shape);
+}
+
+int CycleCreator::getNext(int node, int parent) {
+	while(_links[node].size() == 2) {
+		parent = _links[node][_links[node][0] == parent];
+		std::swap(parent, node);
+	}
+	return node;
+}
+
+void CycleCreator::createLink(int pointA, int pointB) {
+	_cLinks[pointA].push_back(pointB);
+	_cLinks[pointB].push_back(pointA);
+}
+
+void CycleCreator::removeLink(int pointA, int pointB) {
+	*std::find(_cLinks[pointA].begin(), _cLinks[pointA].end(), pointB) = _cLinks[pointA].back();
+	_cLinks[pointA].pop_back();
+	*std::find(_cLinks[pointB].begin(), _cLinks[pointB].end(), pointA) = _cLinks[pointB].back();
+	_cLinks[pointB].pop_back();
+}
+
+void CycleCreator::perfectMatching() {
+	// Reduce graph to 3-connected vertices
+	std::vector<int> order;
+	order.reserve(_points.size());
+	std::mt19937 gen(Globals::_seed);
+	for(int i = 0; i < (int) _points.size(); ++i) if(_links[i].size() == 3) {
+		order.push_back(i);
+		shuffle(_links[i].begin(), _links[i].end(), gen);
+	}
+	shuffle(order.begin(), order.end(), gen);
+	std::vector<int> inv_order(_points.size());
+	for(int i = 0; i < (int) order.size(); ++i) inv_order[order[i]] = i;
+
+	// Compute perfect matching
+	Matching<std::array<int, 3>> m(order.size());
+	for(int i = 0; i < (int) order.size(); ++i)
+		for(int j = 0; j < 3; ++j)
+			m.node(i).link[j] = inv_order[getNext(_links[order[i]][j], order[i])];
+	if(2 * m.compute() != (int) order.size()) THROW_ERROR("Matching failed");
+
+	// Back to the original graph
+	for(int i = 0; i < (int) order.size(); ++i) {
+		int a = order[i];
+		if(!_cLinks[a].empty()) continue;
+		const int b = order[m.node(i).getMatch()];
+		int c = 0;
+		while(getNext(_links[a][c], a) != b) ++c;
+		c = _links[a][c];
+		while(true) {
+			createLink(a, c);
+			if(c == b) break;
+			a = _links[c][_links[c][0] == a];
+			std::swap(a, c);
+		}
+	}
+	for(int i = 0; i < (int) _cLinks.size(); i++)
+		if(_cLinks[i].size() != 1 && _links[i].size() == 3)
+			THROW_ERROR("Matching of 3-connected vertices failed!");
+}
+
+void CycleCreator::switchLink() {
+	_nbConnectedPoints = 0;
+	for(int i = 0; i < (int) _cLinks.size(); i++) {
+		if(_links[i].size() == 2) {
+			if(_cLinks[i].size() == 2)
+				_cLinks[i].clear();
+			else {
+				_cLinks[i] = _links[i];
+				++ _nbConnectedPoints;
+			}
+		} else {
+			const int j = _cLinks[i][0];
+			_cLinks[i].clear();
+			for(int link : _links[i]) if(link != j)
+				_cLinks[i].push_back(link);
+			++ _nbConnectedPoints;
+		}
+	}
 }
 
 void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
@@ -127,7 +208,7 @@ std::vector<int> CycleCreator::getPath(int start, int end) {
 }
 
 std::vector<int> CycleCreator::getIdxs(int i) {
-	std::unordered_set<int> ans;
+	std::set<int> ans;
 	for(int node : _links[i]) if(_cLinks[node].empty()) {
 		int prev = i;
 		while(node != -1) {
@@ -207,14 +288,12 @@ void CycleCreator::fuseIslands() {
 			createLink(i, j);
 			createLink(k, k+1);
 			for(int x = 0; x < (int) _links[i].size();) {
-				int l = _links[i][x];
+				const int l = _links[i][x];
 				const glm::vec2 &e = _points[l];
 				if(Globals::intersect(a, b, e, d)) {
 					_links[i][x] = _links[i].back();
 					_links[i].pop_back();
-					int y = 0;
-					while(_links[l][y] != i) ++y;
-					_links[l][y] = _links[l].back();
+					*std::find(_links[l].begin(), _links[l].end(), i) = _links[l].back();
 					_links[l].pop_back();
 				} else ++x;
 				if(!Globals::intersect(b, a, e, c)) {
@@ -223,14 +302,12 @@ void CycleCreator::fuseIslands() {
 				}
 			}
 			for(int x = 0; x < (int) _links[j].size();) {
-				int l = _links[j][x];
+				const int l = _links[j][x];
 				const glm::vec2 &e = _points[l];
 				if(Globals::intersect(c, b, e, d)) {
 					_links[j][x] = _links[j].back();
 					_links[j].pop_back();
-					int y = 0;
-					while(_links[l][y] != j) ++y;
-					_links[l][y] = _links[l].back();
+					*std::find(_links[l].begin(), _links[l].end(), j) = _links[l].back();
 					_links[l].pop_back();
 				} else ++x;
 				if(!Globals::intersect(d, a, e, c)) {
@@ -290,84 +367,4 @@ void CycleCreator::removeUnused(const Shape &shape) {
 	_points.resize(newSize);
 	_links.resize(newSize);
 	_cLinks.resize(newSize);
-}
-
-void CycleCreator::perfectMatching() {
-	// Reduce graph to 3-connected vertices
-	std::vector<int> order;
-	order.reserve(_points.size());
-	std::mt19937 gen(Globals::_seed);
-	for(int i = 0; i < (int) _points.size(); ++i) if(_links[i].size() == 3) {
-		order.push_back(i);
-		shuffle(_links[i].begin(), _links[i].end(), gen);
-	}
-	shuffle(order.begin(), order.end(), gen);
-	std::vector<int> inv_order(_points.size());
-	for(int i = 0; i < (int) order.size(); ++i) inv_order[order[i]] = i;
-
-	// Compute perfect matching
-	Matching<std::array<int, 3>> m(order.size());
-	for(int i = 0; i < (int) order.size(); ++i)
-		for(int j = 0; j < 3; ++j)
-			m.node(i).link[j] = inv_order[getNext(_links[order[i]][j], order[i])];
-	if(2 * m.compute() != (int) order.size()) THROW_ERROR("Matching failed");
-
-	// Back to the original graph
-	for(int i = 0; i < (int) order.size(); ++i) {
-		int a = order[i];
-		if(!_cLinks[a].empty()) continue;
-		const int b = order[m.node(i).getMatch()];
-		int c = 0;
-		while(getNext(_links[a][c], a) != b) ++c;
-		c = _links[a][c];
-		while(true) {
-			createLink(a, c);
-			if(c == b) break;
-			a = _links[c][_links[c][0] == a];
-			std::swap(a, c);
-		}
-	}
-	for(int i = 0; i < (int) _cLinks.size(); i++)
-		if(_cLinks[i].size() != 1 && _links[i].size() == 3)
-			THROW_ERROR("Matching of 3-connected vertices failed!");
-}
-
-void CycleCreator::switchLink() {
-	_nbConnectedPoints = 0;
-	for(int i = 0; i < (int) _cLinks.size(); i++) {
-		if(_links[i].size() == 2) {
-			if(_cLinks[i].size() == 2)
-				_cLinks[i].clear();
-			else {
-				_cLinks[i] = _links[i];
-				++ _nbConnectedPoints;
-			}
-		} else {
-			const int j = _cLinks[i][0];
-			_cLinks[i].clear();
-			for(int link : _links[i]) if(link != j)
-				_cLinks[i].push_back(link);
-			++ _nbConnectedPoints;
-		}
-	}
-}
-
-int CycleCreator::getNext(int node, int parent) {
-	while(_links[node].size() == 2) {
-		parent = _links[node][_links[node][0] == parent];
-		std::swap(parent, node);
-	}
-	return node;
-}
-
-void CycleCreator::createLink(int pointA, int pointB) {
-	_cLinks[pointA].push_back(pointB);
-	_cLinks[pointB].push_back(pointA);
-}
-
-void CycleCreator::removeLink(int pointA, int pointB) {
-	*std::find(_cLinks[pointA].begin(), _cLinks[pointA].end(), pointB) = _cLinks[pointA].back();
-	_cLinks[pointA].pop_back();
-	*std::find(_cLinks[pointB].begin(), _cLinks[pointB].end(), pointA) = _cLinks[pointB].back();
-	_cLinks[pointB].pop_back();
 }

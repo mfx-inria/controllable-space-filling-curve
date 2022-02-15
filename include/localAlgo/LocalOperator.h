@@ -17,19 +17,19 @@ private:
 	bool														_isEnd = false;
 	std::vector<int>											_index;
 	std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>	_final;
-	std::vector<Shape>											_strokeZones;
+	std::vector<Shape>											_colorZones;
 	std::mt19937												_gen;
 
 public:
 	LocalOperator() = default;
-	LocalOperator(std::vector<Shape> &zones, std::vector<Shape> &&strokeZones, Shape &border, int layerIndex);
+	LocalOperator(Shape &shape, std::vector<Shape> &zones, std::vector<Shape> &&colorZones, int layerIndex);
 	void setGraph(Graph &graph);
 
 	void	updateState(bool);
 	void	startShuffling(int, int);
 	void	optimize();
 	const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>&	getFinal() const;
-	const std::vector<Shape>&											getStrokeZones() const;
+	const std::vector<Shape>&											getColorZones() const;
 
 private:
 	bool	checkPaperOp(int);
