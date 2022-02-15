@@ -540,7 +540,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 	f += isoF;
 
 	if(f < _prevF) {
-		std::cerr << "Energy: " << f << "   (cvt: " << cvtF << "  Lap: " << lapF << "  len: " << lenF << "  vec: " << vecF << "  iso: " << isoF << ")" << std::endl;
+		std::cout << "Energy: " << f << "   (cvt: " << cvtF << "  Lap: " << lapF << "  len: " << lenF << "  vec: " << vecF << "  iso: " << isoF << ")" << std::endl;
 		_prevF = f;
 		_prevX = x;
 	}

@@ -159,7 +159,7 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 	UniformReal<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
 	std::mt19937 gen(Globals::_seed + layerIndex);
 	Box<float> box;
-	for (const glm::vec2 &point : shape._points) box.update(point);
+	for(const glm::vec2 &point : shape._points) box.update(point);
 	std::vector<glm::vec2> centroids;
 	for(float x = box.x0; x <= box.x1; x += Globals::_d) {
 		int j = 1;

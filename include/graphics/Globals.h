@@ -44,7 +44,7 @@ public:
 	inline static double        _lengthToClear; // in frame in length
 
 	// Parameters of randomness and multithreading
-	inline static unsigned int  _seed = 5;
+	inline static unsigned int  _seed = 0;
 	inline static unsigned int  _nbThread = std::thread::hardware_concurrency();
 
 	// Size of SVG file

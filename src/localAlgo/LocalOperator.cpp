@@ -44,7 +44,7 @@ inline bool LocalOperator::switchConditions(float score_dif) {
     if(score_dif <= 0.f) return true;
     if(_isEnd || score_dif > 0.4f) return false;
     if(_iter % 400 == 0) return true;
-    return UniformReal<float>(0, 1.f + score_dif * _points.size())(_gen) < 1.f;
+    return UniformReal<float>(0, 1.f + 10.f * score_dif * _points.size())(_gen) < 1.f;
 }
 
 ////////////////////////

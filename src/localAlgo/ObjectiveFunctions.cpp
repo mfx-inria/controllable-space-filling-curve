@@ -104,19 +104,11 @@ void ObjectiveFunctions::calculateScore() {
             std::sort(tss.begin(), tss.end());
             for(l = 2; l < (int) tss.size(); l += 2)
                 if(tss[l-1].second != tss[l].second)
-                {
-                    if (tss[l-1].second != -1 && tss[l].second != -1)
-                        _segments[i].back().zon += 10;
-                    else
-                        _segments[i].back().zon++;
-                }
+                    ++ _segments[i].back().zon;
         }
     }
 
     computeData();
-
-    // Get final score
-    _score = getMeanScore();
 }
 
 const ObjectiveFunctions::Segment& ObjectiveFunctions::getSegment(int i, int j) {
@@ -184,7 +176,7 @@ void ObjectiveFunctions::applyShift(const std::vector<int> &points,
         addSegment(points[i], points[j]);
         createLink(points[i], points[j]);
     }
-    if(++_nbUpdates > 2500) computeData();
+    if(++_nbUpdates > 1000) computeData();
     else _score = getMeanScore();
 }
 

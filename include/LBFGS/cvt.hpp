@@ -101,7 +101,7 @@ class Smoother : public CVT {
 public:
 	double laplacian_coeff = .125;
 	double length_coeff = .4;
-	double obj_coeff = 0.00625f;
+	double obj_coeff = 0.013;
 
 	Smoother(const Shape *shape, const std::vector<Shape> *objZones, const std::vector<Shape> *colorZones, double vecArea, int layerIndex);
 
