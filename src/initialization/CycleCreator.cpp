@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <set>
 #include <unordered_set>
-#include <iostream>
 
 CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 	_points = std::move(graph._points);
