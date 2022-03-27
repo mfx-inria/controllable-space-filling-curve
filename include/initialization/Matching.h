@@ -10,7 +10,7 @@ struct Matching {
 	std::vector<int> mate, base, seen;
 	std::vector<std::pair<int,int>> label;
 	
-	Matching(int N): N(N), G(N+1), mate(N+1), base(N+1), label(N+1), seen(N+1) {}
+	Matching(int N): N(N), G(N+1), mate(N+1), base(N+1), seen(N+1), label(N+1) {}
 
 	int group(int x) {
 		if(seen[base[x]] == S) base[x] = group(base[x]);
