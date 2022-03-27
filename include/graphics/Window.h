@@ -34,6 +34,7 @@ private:
 	void                    keyPressed(unsigned char , int , int);
 	void                    mouseClicked(int, int, int, int);
 	void                    mouseMoved(int, int);
+	void					screenShot();
 	static void             drawCallback();
 	static void             keyCallback(unsigned char, int , int );
 	static void             mouseCallback(int, int, int, int);

@@ -6,8 +6,12 @@
 #include "graphics/Window.h"
 #include "graphics/DirectionField.h"
 
+#define GL_GLEXT_PROTOTYPES
 #include <GL/freeglut.h>
 #include <iostream>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "graphics/stb_image_write.h"
 
 const float zoom_step = 1.1f;
 
@@ -86,6 +90,9 @@ void Window::keyPressed(unsigned char key, int x, int y) {
 			_showPrintColor = !_showPrintColor;
 			glutPostRedisplay();
 			break;
+		case 'w':
+			screenShot();
+			break;
 	}
 }
 
@@ -139,6 +146,102 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 		}
 	}
 	glutPostRedisplay();
+}
+
+void Window::screenShot() {
+	const int W = 1920;
+	const int H = 1080;
+	GLuint frameBuffer;
+	glGenFramebuffers(1, &frameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+
+	GLuint renderedTexture;
+	glGenTextures(1, &renderedTexture);
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, W, H, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) THROW_ERROR("Failed renderering screenshot");
+
+	glClearColor(1.f, 1.f, 1.f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, W, H);
+	glLoadIdentity();
+	float scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y);
+	glm::vec2 center = .5f * Globals::_SVGSize;
+	gluOrtho2D(center.x - .5f*W/scale, center.x + .5f*W/scale,
+			   center.y - .5f*H/scale, center.y + .5f*H/scale);
+	glEnable(GL_LINE_SMOOTH);
+
+	const Layer &layer = _ga->_layers[_layerIndex];
+
+	const auto drawVertex = [&](const glm::vec2 &point){ glVertex2f(point.x, point.y); };
+
+	// Show background
+	glBegin(GL_TRIANGLES);
+	for(const LocalOperator &op : layer._operators) {
+		for(const Shape &zone : op.getColorZones()) {
+			COLOR_INT(zone._printColor);
+			for(uint i : zone._triangles[0]) drawVertex(zone._points[i]);
+			glColor3f(1.f, 1.f, 1.f);
+			for(uint i = 0; i < zone._holes.size(); ++i)
+				for(uint j : zone._triangles[i+1]) drawVertex(zone._holes[i][j]);
+		}
+	}
+	glEnd();
+
+	// Show boundaries
+	glBegin(GL_LINES);
+	glLineWidth(5.0f);
+	glColor3f(0.38f, 0.51f, 0.71f); // blue
+	for(const LocalOperator &op : layer._operators) {
+		for(const Shape &zone : op.getColorZones()) {
+			for(int i = 1; i < (int) zone._points.size(); ++i) {
+				drawVertex(zone._points[i - 1]);
+				drawVertex(zone._points[i]);
+			}
+			for(const std::vector<glm::vec2> &hole : zone._holes) {
+				for(int i = 1; i < (int) hole.size(); ++i) {
+					drawVertex(hole[i - 1]);
+					drawVertex(hole[i]);
+				}
+			}
+		}
+	}
+	glEnd();
+
+	// Show links
+	glLineWidth(5.0f);
+	glBegin(GL_LINES);
+	for(const LocalOperator &op : layer._operators) {
+		auto [points, cLinks, oriLinks] = op.getGraph();
+		const std::vector<std::vector<int>> &links = cLinks;
+		for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
+			const int z = op._zone[k];
+			const glm::vec3 background = COLOR_INT2(op.getObjZones()[z]._printColor);
+			glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
+			drawVertex(points[k]);
+		}
+	}
+	glEnd();
+
+	GLubyte* pixels = new GLubyte[3*W*H];
+	GLint pack = 7;
+	while(W&pack) pack >>= 1;
+	++ pack;
+	glPixelStorei(GL_PACK_ALIGNMENT, pack);
+	glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	static int IM = 0;
+	stbi_write_png(("im_"+std::to_string(IM++)+".png").c_str(), W, H, 3, pixels, 0);
+
+	// Clean up
+	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteTextures(1, &renderedTexture);
+	glDeleteFramebuffers(1, &frameBuffer);
+	delete[] pixels;
 }
 
 // Display

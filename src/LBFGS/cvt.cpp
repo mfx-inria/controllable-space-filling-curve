@@ -586,7 +586,7 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	param.m = 7;
 	param.max_linesearch = 40;
 	param.epsilon = 1e-3f;
-	param.max_iterations = 50 + .5 * std::sqrt(x.size());
+	param.max_iterations = 70 + .5 * std::sqrt(x.size());
 	_L0 = length(x);
 	try {
 		double f;
