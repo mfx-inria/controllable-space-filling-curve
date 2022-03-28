@@ -4,6 +4,7 @@
 
 #include "initialization/GraphCreator.h"
 #include "graphics/DirectionField.h"
+#include "graphics/Window.h"
 #include "LBFGS/cvt.hpp"
 #include "LBFGS.h"
 #include "tools/Random.h"
@@ -178,6 +179,7 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 
 	// remove 2co
 	remove2coPoints(shape, graph);
+	Window::add2Q(layerIndex, graph._points, graph._links);
 
 	// push points inside
 	const double EPS = 1e-5f * box.diag();
@@ -186,6 +188,7 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 		for(const std::vector<glm::vec2> &in : shape._holes)
 			if(push_inside(in, p, EPS)) break;
 	}
+	Window::add2Q(layerIndex, graph._points, graph._links);
 
 	return true;
 }
@@ -389,6 +392,8 @@ double GraphCVT::operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 	if(f < _prevF) {
 		_prevF = f;
 		_prevX = x;
+		Graph g = getGraph(x);
+		Window::add2Q(_layerIndex, g._points, g._links);
 	}
 	return f;
 }
@@ -484,6 +489,9 @@ Graph GraphCVT::optimize(std::vector<glm::vec2> &points) {
 	_prevX = x;
 	_prevF = std::numeric_limits<double>::max();
 	_wantedMaxSize = .66 * std::sqrt(_shape->_area / (M_PI * points.size()));
+	Graph g = getGraph(x);
+	Window::add2Q(_layerIndex, g._points, g._links);
+	g = Graph();
 
 	// LBFGS
 	LBFGSpp::LBFGSParam<double> param;

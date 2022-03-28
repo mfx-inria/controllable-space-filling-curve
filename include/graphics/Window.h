@@ -6,12 +6,19 @@
 #define HAMILTON_WINDOW_H
 
 #include "managers/GeneticAlgorithm.h"
+#include <mutex>
+#include <queue>
 
 class Window {
 public:
 	Window(int argc, char **argv, GeneticAlgorithm* ga);
 
 	void start();
+	inline static void add2Q(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links) {
+		currentInstance->_qLock.lock();
+		currentInstance->_q.emplace(layerIndex, points, links);
+		currentInstance->_qLock.unlock();
+	}
 	static void printHelp();
 
 private:
@@ -28,13 +35,16 @@ private:
 	glm::vec2               _lastClikedPos;
 	bool                    _leftDown = false;
 
+	std::mutex _qLock;
+	std::queue<std::tuple<int, std::vector<glm::vec2>, std::vector<std::vector<int>>>> _q;
+
 private:
 	void                    display();
 	void                    displayCycle();
 	void                    keyPressed(unsigned char , int , int);
 	void                    mouseClicked(int, int, int, int);
 	void                    mouseMoved(int, int);
-	void					screenShot();
+	void					screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links);
 	static void             drawCallback();
 	static void             keyCallback(unsigned char, int , int );
 	static void             mouseCallback(int, int, int, int);

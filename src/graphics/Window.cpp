@@ -91,7 +91,7 @@ void Window::keyPressed(unsigned char key, int x, int y) {
 			glutPostRedisplay();
 			break;
 		case 'w':
-			screenShot();
+			screenShot(_layerIndex, _ga->_layers[_layerIndex]._operators[0].getPoints(), _ga->_layers[_layerIndex]._operators[0].getLinks());
 			break;
 	}
 }
@@ -148,7 +148,7 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 	glutPostRedisplay();
 }
 
-void Window::screenShot() {
+void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links) {
 	const int W = 1920;
 	const int H = 1080;
 	GLuint frameBuffer;
@@ -175,7 +175,7 @@ void Window::screenShot() {
 			   center.y - .5f*H/scale, center.y + .5f*H/scale);
 	glEnable(GL_LINE_SMOOTH);
 
-	const Layer &layer = _ga->_layers[_layerIndex];
+	const Layer &layer = _ga->_layers[layerIndex];
 
 	const auto drawVertex = [&](const glm::vec2 &point){ glVertex2f(point.x, point.y); };
 
@@ -193,8 +193,8 @@ void Window::screenShot() {
 	glEnd();
 
 	// Show boundaries
+	glLineWidth(4.0f);
 	glBegin(GL_LINES);
-	glLineWidth(5.0f);
 	glColor3f(0.38f, 0.51f, 0.71f); // blue
 	for(const LocalOperator &op : layer._operators) {
 		for(const Shape &zone : op.getColorZones()) {
@@ -215,15 +215,10 @@ void Window::screenShot() {
 	// Show links
 	glLineWidth(5.0f);
 	glBegin(GL_LINES);
-	for(const LocalOperator &op : layer._operators) {
-		auto [points, cLinks, oriLinks] = op.getGraph();
-		const std::vector<std::vector<int>> &links = cLinks;
-		for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
-			const int z = op._zone[k];
-			const glm::vec3 background = COLOR_INT2(op.getObjZones()[z]._printColor);
-			glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
-			drawVertex(points[k]);
-		}
+	for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
+		const glm::vec3 background(1.f, 1.f, 1.f);
+		glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.r)), .5f * (49.f/255.f + 1.f - std::round(background.g)), .5f * (70.f/255.f + 1.f - std::round(background.b)));
+		drawVertex(points[k]);
 	}
 	glEnd();
 
@@ -303,7 +298,7 @@ void Window::displayCycle() {
 			for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
 				const int z = op._zone[k];
 				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getObjZones()[z]._printColor) : COLORS[op.getObjZones()[z]._objcetive];
-				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
+				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.r)), .5f * (49.f/255.f + 1.f - std::round(background.g)), .5f * (70.f/255.f + 1.f - std::round(background.b)));
 				drawVertex(points[k]);
 			}
 			glEnd();
@@ -338,6 +333,13 @@ void Window::displayCycle() {
 }
 
 void Window::display() {
+	while(!_q.empty()) {
+		_qLock.lock();
+		const auto &[layerIndex, points, links] = _q.front();
+		screenShot(layerIndex, points, links);
+		_q.pop();
+		_qLock.unlock();
+	}
 	glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
 	glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)
 	if(_ga->getNbReadyLayers() > 0) displayCycle();
