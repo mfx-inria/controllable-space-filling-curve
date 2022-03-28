@@ -133,6 +133,7 @@ void LocalOperator::startShuffling(int multiplier, int champ) {
     int N = order.size();
     UniformInt<int> dis(0, N-1);
     bool pred_isEnd = _isEnd;
+    int count = 0;
     for(int s = 0; s < 2; ++s) {
         if(s) updateState(true);
         int nIter = multiplier * _points.size() * (1 + pred_isEnd);
@@ -140,8 +141,18 @@ void LocalOperator::startShuffling(int multiplier, int champ) {
             int random0 = dis(_gen);
             int random = order[random0];
 
-            if(checkPaperOp(random)) N = order.size();
-            else {
+            if(checkPaperOp(random)) {
+                N = order.size();
+                if(_history.size() < 50) {
+                    if((++count)%40==0) _history.push_back(_cLinks);
+                } else if(_history.size() < 200) {
+                    if((++count)%80==0) _history.push_back(_cLinks);
+                } else if(_history.size() < 300) {
+                    if((++count)%240==0) _history.push_back(_cLinks);
+                } else {
+                    if((++count)%4000==0) _history.push_back(_cLinks);
+                }
+            } else {
                 if(--N == 0) break;
                 std::swap(order[random0], order[N]);
             }

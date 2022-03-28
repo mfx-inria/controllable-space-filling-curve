@@ -60,7 +60,7 @@ struct Matching {
 
 	int solve() {
 		int ans = 0;
-		for(int st = 1; st <= N; ++st) if(!mate[st]) ans += augment(S = st);
+		for(int st = 1; st <= N; ++st) if(!mate[st]) if((ans += augment(S = st)) >= 20) return ans;
 		return ans;
 	}
 };

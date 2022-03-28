@@ -5,6 +5,7 @@
 #include "initialization/CycleCreator.h"
 #include "initialization/Matching.h"
 #include "tools/Random.h"
+#include "graphics/Window.h"
 
 #include <algorithm>
 #include <set>
@@ -67,7 +68,34 @@ void CycleCreator::perfectMatching() {
 	for(int i = 0; i < (int) order.size(); ++i)
 		for(int j = 0; j < 3; ++j)
 			m.G[i+1][j] = inv_order[getNext(_links[order[i]][j], order[i])]+1;
-	if(2*m.solve() != (int) order.size()) THROW_ERROR("Matching failed");
+	int ans = 0;
+	while(2*ans != (int) order.size()) {
+		int add = m.solve();
+		if(!add) THROW_ERROR("Matching failed");
+		ans += add;
+		// Back to the original graph
+		for(int i = 0; i < (int) order.size(); ++i) {
+			int a = order[i];
+			if(!_cLinks[a].empty()) continue;
+			if(!m.mate[i+1]) {
+				_cLinks[a].push_back(-1);
+				continue;
+			}
+			const int b = order[m.mate[i+1]-1];
+			int c = 0;
+			while(getNext(_links[a][c], a) != b) ++c;
+			c = _links[a][c];
+			while(true) {
+				createLink(a, c);
+				if(c == b) break;
+				a = _links[c][_links[c][0] == a];
+				std::swap(a, c);
+			}
+		}
+		switchLink();
+		Window::add2Q(0, _points, _cLinks);
+		for(auto &l : _cLinks) l.clear();
+	}
 
 	// Back to the original graph
 	for(int i = 0; i < (int) order.size(); ++i) {
@@ -110,6 +138,7 @@ void CycleCreator::switchLink() {
 }
 
 void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
+	int count2 = 0;
 	for(const std::vector<int> &cell : graph._cells) {
 		if(cell.size() < 3) continue;
 
@@ -181,6 +210,7 @@ void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 		createLink(a, tmp);
 		createLink(tmp, b);
 		++ _nbConnectedPoints;
+		if((++count2)%15==0) Window::add2Q(0, _points, _cLinks);
 	}
 }
 
@@ -227,6 +257,7 @@ std::vector<int> CycleCreator::getIdxs(int i) {
 void CycleCreator::fuseIslands() {
 	if(_union.fullyMerged(_nbConnectedPoints)) return;
 	const int N = _points.size();
+	int count = 0;
 	// i ==== k       i ---- k
 	// |      |  ==>  ||    ||
 	// j ==== l       j ---- l
@@ -243,6 +274,7 @@ void CycleCreator::fuseIslands() {
 							_union.merge(p->at(i), p->at(i-1));
 							createLink(p->at(i), p->at(i-1));
 						}
+					if((++count)%3==0) Window::add2Q(0, _points, _cLinks);
 					if(_union.fullyMerged(_nbConnectedPoints)) return;
 					goto found_flip;
 				}
@@ -322,6 +354,7 @@ void CycleCreator::fuseIslands() {
 			_links[k].push_back(k+1);
 			_links[k+1].push_back(k);
 			_union.merge(i, j);
+			if((++count)%3==0) Window::add2Q(0, _points, _cLinks);
 			if(_union.fullyMerged(_nbConnectedPoints)) return;
 		}
 	THROW_ERROR("Failed connecting disjoint cycles!");
@@ -367,4 +400,5 @@ void CycleCreator::removeUnused(const Shape &shape) {
 	_points.resize(newSize);
 	_links.resize(newSize);
 	_cLinks.resize(newSize);
+	Window::add2Q(0, _points, _cLinks);
 }

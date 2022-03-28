@@ -20,10 +20,12 @@ private:
 	std::vector<Shape>											_colorZones;
 	std::mt19937												_gen;
 
+
 public:
 	LocalOperator() = default;
 	LocalOperator(Shape &shape, std::vector<Shape> &zones, std::vector<Shape> &&colorZones, int layerIndex);
 	void setGraph(Graph &graph);
+	std::vector<std::vector<std::vector<int>>> _history;
 
 	void	updateState(bool);
 	void	startShuffling(int, int);
