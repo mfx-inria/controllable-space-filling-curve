@@ -15,7 +15,7 @@
 typedef unsigned int uint;
 
 // Objectives
-enum { GREY,        BLUE,      RED,           GREEN,         YELLOW,       CYAN,        BLACK   };
+enum OBJ_COLOR { GREY,        BLUE,      RED,           GREEN,         YELLOW,       CYAN,        BLACK   };
 enum OBJECTIVE { ANISOTROPY,  ISOTROPY,  VECTOR_FIELD,  ORTHO_VECTOR,  VECTOR_ZONE,  ORTHO_ZONE,  NOTHING };
 const std::vector<glm::vec3> COLORS = {
 	{ 0.5f, 0.5f, 0.5f }, // GREY

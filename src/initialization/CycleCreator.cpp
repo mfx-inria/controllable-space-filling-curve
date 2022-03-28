@@ -65,14 +65,14 @@ void CycleCreator::perfectMatching() {
 	Matching<std::array<int, 3>> m(order.size());
 	for(int i = 0; i < (int) order.size(); ++i)
 		for(int j = 0; j < 3; ++j)
-			m.node(i).link[j] = inv_order[getNext(_links[order[i]][j], order[i])];
-	if(2 * m.compute() != (int) order.size()) THROW_ERROR("Matching failed");
+			m.G[i+1][j] = inv_order[getNext(_links[order[i]][j], order[i])]+1;
+	if(2*m.solve() != (int) order.size()) THROW_ERROR("Matching failed");
 
 	// Back to the original graph
 	for(int i = 0; i < (int) order.size(); ++i) {
 		int a = order[i];
 		if(!_cLinks[a].empty()) continue;
-		const int b = order[m.node(i).getMatch()];
+		const int b = order[m.mate[i+1]-1];
 		int c = 0;
 		while(getNext(_links[a][c], a) != b) ++c;
 		c = _links[a][c];

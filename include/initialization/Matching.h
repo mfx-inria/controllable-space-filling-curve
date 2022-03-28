@@ -2,105 +2,65 @@
 #include <vector>
 #include <queue>
 
+// 1 indexed
 template <typename L>
 struct Matching {
-	struct Node {
-		L link;
-		int getMatch() const { return match; }
-	private:
-		friend Matching;
-		int base, father, match;
-		int seen, ancestor;
-		bool inQ;
-		void init(int i, int s) { base = i; father = -1; seen = s; inQ = false; }
-	};
+	int N, S;
+	std::vector<L> G;
+	std::vector<int> mate, base, seen;
+	std::vector<std::pair<int,int>> label;
 	
-	Matching(int n): nodes(n), S(0) {}
+	Matching(int N): N(N), G(N+1), mate(N+1), base(N+1), seen(N+1), label(N+1) {}
 
-	Node& node(int i) { return nodes[i]; }
-
-	int compute() {
-		int nmatch = 0;
-		for(Node &n : nodes) n.match = n.seen = n.ancestor = -1;
-		for(int i = 0; i < (int) nodes.size(); ++i) if(nodes[i].match == -1)
-			nmatch += augment(i);
-		return nmatch;
+	int group(int x) {
+		if(seen[base[x]] == S) base[x] = group(base[x]);
+		return base[x];
 	}
 
-private:
-	std::vector<Node> nodes;
-	std::queue<int> Q;
-	int S;
-
-	inline int base(int i) {
-		if(nodes[i].base == i) return i;
-		return nodes[i].base = base(nodes[i].base);
+	void match(int a, int b) {
+		std::swap(b,mate[a]); if(mate[b] != a) return;
+		if(!label[a].second) match(mate[b] = label[a].first, b); // vertex label
+		else match(label[a].first, label[a].second), match(label[a].second, label[a].first); // edge label
 	}
 
-	int augment(int i) {
-		nodes[i].init(i, S = i);
-		nodes[i].inQ = true;
-		for(Q = std::queue<int>({i}); !Q.empty(); Q.pop()) {
-			i = Q.front();
-			Node &ni = nodes[i];
-			for(int j : nodes[i].link) {
-				Node &nj = nodes[j];
-				if(nj.seen != S) nj.init(j, S);
-				if(base(j) == base(i) || ni.match == j) continue;
-				if(j == S) blossom(i, j);
-				else {
-					const int mj = nj.match;
-					if(mj != -1) {
-						if(nodes[mj].seen != S) nodes[mj].init(mj, S);
-						else if(nodes[mj].father != -1) blossom(i, j);
+	bool augment(int st) {
+		seen[st] = S; base[st] = 0; label[st] = {0,0};
+		std::queue<int> q; q.push(st);
+		while(!q.empty()) {
+			int a = q.front(); q.pop();
+			for(int b : G[a]) {
+				if(seen[b] == S) {
+					int x = group(a), y = group(b), lca = 0;
+					while(x || y) {
+						if(y) std::swap(x,y);
+						if(label[x] == std::make_pair(a,b)) { lca = x; break; }
+						label[x] = {a,b};
+						x = group(label[mate[x]].first);
 					}
-					if(nj.father == -1) {
-						nj.father = i;
-						if(mj == -1) {
-							do {
-								const int k = nodes[j].father;
-								const int l = nodes[k].match;
-								nodes[k].match = j;
-								nodes[j].match = k;
-								j = l;
-							} while(j != -1);
-							return 1;
-						} else if(!nodes[mj].inQ) {
-							nodes[mj].inQ = true;
-							Q.push(mj);
-						}
+					for(int v: {group(a), group(b)}) while(v != lca) {
+						q.push(v);
+						seen[v] = S;
+						base[v] = lca;
+						v = group(label[mate[v]].first);
 					}
+				} else if(!mate[b]) {
+					match(mate[b] = a, b);
+					return true;
+				} else if(seen[mate[b]] != S) {
+					seen[mate[b]] = S;
+					base[mate[b]] = b;
+					label[b] = {0,0};
+					label[mate[b]] = {a,0};
+					q.push(mate[b]);
 				}
 			}
 		}
-		return 0;
+		return false;
 	}
 
-	void blossom(int i, int j) {
-		int lca = LCA(i, j);
-		if(base(i) != lca) contract(lca, i, j);
-		if(base(j) != lca) contract(lca, j, i);
-	}
-
-	int LCA(int i, int j) {
-		static int A = 0; ++ A;
-		for(;true; std::swap(i, j)) if(i != -1) {
-			if(nodes[i=base(i)].ancestor == A) return i;
-			nodes[i].ancestor = A;
-			i = i == S ? -1 : nodes[nodes[i].match].father;
-		}
-	}
-
-	void contract(int lca, int i, int j) {
-		std::vector<int> ns;
-		do {
-			nodes[i].father = j;
-			j = nodes[i].match;
-			ns.push_back(i); ns.push_back(j);
-			if(!nodes[i].inQ) { nodes[i].inQ = true; Q.push(i); }
-			if(!nodes[j].inQ) { nodes[j].inQ = true; Q.push(j); }
-			i = nodes[j].father;
-		} while(base(i) != lca);
-		for(int n : ns) nodes[n].base = lca;
+	int solve() {
+		int ans = 0;
+		for(int st = 1; st <= N; ++st) if(!mate[st]) ans += augment(S = st);
+		return ans;
 	}
 };
