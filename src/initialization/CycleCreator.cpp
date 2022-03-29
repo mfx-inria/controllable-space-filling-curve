@@ -93,7 +93,7 @@ void CycleCreator::perfectMatching() {
 			}
 		}
 		switchLink();
-		Window::add2Q(0, _points, _cLinks);
+		Window::add2Q(0, _points, _cLinks, "init");
 		for(auto &l : _cLinks) l.clear();
 	}
 
@@ -210,7 +210,7 @@ void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 		createLink(a, tmp);
 		createLink(tmp, b);
 		++ _nbConnectedPoints;
-		if((++count2)%15==0) Window::add2Q(0, _points, _cLinks);
+		if((++count2)%15==0) Window::add2Q(0, _points, _cLinks, "init");
 	}
 }
 
@@ -274,7 +274,7 @@ void CycleCreator::fuseIslands() {
 							_union.merge(p->at(i), p->at(i-1));
 							createLink(p->at(i), p->at(i-1));
 						}
-					if((++count)%3==0) Window::add2Q(0, _points, _cLinks);
+					if((++count)%3==0) Window::add2Q(0, _points, _cLinks, "init");
 					if(_union.fullyMerged(_nbConnectedPoints)) return;
 					goto found_flip;
 				}
@@ -354,7 +354,7 @@ void CycleCreator::fuseIslands() {
 			_links[k].push_back(k+1);
 			_links[k+1].push_back(k);
 			_union.merge(i, j);
-			if((++count)%3==0) Window::add2Q(0, _points, _cLinks);
+			if((++count)%3==0) Window::add2Q(0, _points, _cLinks, "init");
 			if(_union.fullyMerged(_nbConnectedPoints)) return;
 		}
 	THROW_ERROR("Failed connecting disjoint cycles!");
@@ -400,5 +400,5 @@ void CycleCreator::removeUnused(const Shape &shape) {
 	_points.resize(newSize);
 	_links.resize(newSize);
 	_cLinks.resize(newSize);
-	Window::add2Q(0, _points, _cLinks);
+	Window::add2Q(0, _points, _cLinks, "init");
 }

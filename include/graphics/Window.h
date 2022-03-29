@@ -14,9 +14,9 @@ public:
 	Window(int argc, char **argv, GeneticAlgorithm* ga);
 
 	void start();
-	inline static void add2Q(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links) {
+	inline static void add2Q(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name) {
 		currentInstance->_qLock.lock();
-		currentInstance->_q.emplace(layerIndex, points, links);
+		currentInstance->_q.emplace(layerIndex, points, links, name);
 		currentInstance->_qLock.unlock();
 	}
 	static void printHelp();
@@ -36,7 +36,7 @@ private:
 	bool                    _leftDown = false;
 
 	std::mutex _qLock;
-	std::queue<std::tuple<int, std::vector<glm::vec2>, std::vector<std::vector<int>>>> _q;
+	std::queue<std::tuple<int, std::vector<glm::vec2>, std::vector<std::vector<int>>, std::string>> _q;
 
 private:
 	void                    display();
@@ -44,7 +44,7 @@ private:
 	void                    keyPressed(unsigned char , int , int);
 	void                    mouseClicked(int, int, int, int);
 	void                    mouseMoved(int, int);
-	void					screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links);
+	void					screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name);
 	static void             drawCallback();
 	static void             keyCallback(unsigned char, int , int );
 	static void             mouseCallback(int, int, int, int);

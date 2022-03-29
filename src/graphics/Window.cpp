@@ -91,7 +91,7 @@ void Window::keyPressed(unsigned char key, int x, int y) {
 			glutPostRedisplay();
 			break;
 		case 'w':
-			screenShot(_layerIndex, _ga->_layers[_layerIndex]._operators[0].getPoints(), _ga->_layers[_layerIndex]._operators[0].getLinks());
+			screenShot(_layerIndex, _ga->_layers[_layerIndex]._operators[0].getPoints(), _ga->_layers[_layerIndex]._operators[0].getLinks(), "screenShot");
 			break;
 	}
 }
@@ -148,7 +148,7 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 	glutPostRedisplay();
 }
 
-void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links) {
+void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name) {
 	const int W = 1920;
 	const int H = 1080;
 	GLuint frameBuffer;
@@ -229,7 +229,7 @@ void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, co
 	glPixelStorei(GL_PACK_ALIGNMENT, pack);
 	glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 	static int IM = 0;
-	stbi_write_png(("im_"+std::to_string(IM++)+".png").c_str(), W, H, 3, pixels, 0);
+	stbi_write_png((name+"_"+std::to_string(IM++)+".png").c_str(), W, H, 3, pixels, 0);
 
 	// Clean up
 	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -335,8 +335,8 @@ void Window::displayCycle() {
 void Window::display() {
 	while(!_q.empty()) {
 		_qLock.lock();
-		const auto &[layerIndex, points, links] = _q.front();
-		screenShot(layerIndex, points, links);
+		const auto &[layerIndex, points, links, name] = _q.front();
+		screenShot(layerIndex, points, links, name);
 		_q.pop();
 		_qLock.unlock();
 	}
