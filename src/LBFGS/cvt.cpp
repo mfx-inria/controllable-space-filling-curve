@@ -1,6 +1,7 @@
 #include "LBFGS/cvt.hpp"
 #include "LBFGS.h"
 #include "graphics/DirectionField.h"
+#include "graphics/Window.h"
 
 #include <iostream>
 
@@ -541,6 +542,22 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 
 	if(f < _prevF) {
 		std::cout << "Energy: " << f << "   (cvt: " << cvtF << "  Lap: " << lapF << "  len: " << lenF << "  vec: " << vecF << "  iso: " << isoF << ")" << std::endl;
+		std::vector<glm::vec2> points(N);
+		std::vector<std::vector<int>> links(N);
+		if(f > 70.) {
+			for(int i = 0; i < N; ++i) {
+				points[i].x = .5 * (x(2*i  ) + _prevX(2*i  ));
+				points[i].y = .5 * (x(2*i+1) + _prevX(2*i+1));
+				links[i] = {(i+1)%N, (i+N-1)%N};
+			}
+			Window::add2Q(_layerIndex, points, links);
+		}
+		for(int i = 0; i < N; ++i) {
+			points[i].x = x(2*i);
+			points[i].y = x(2*i+1);
+			links[i] = {(i+1)%N, (i+N-1)%N};
+		}
+		Window::add2Q(_layerIndex, points, links);
 		_prevF = f;
 		_prevX = x;
 	}
@@ -586,7 +603,7 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	param.m = 7;
 	param.max_linesearch = 40;
 	param.epsilon = 1e-3f;
-	param.max_iterations = 70 + .5 * std::sqrt(x.size());
+	param.max_iterations = 90 + .5 * std::sqrt(x.size());
 	_L0 = length(x);
 	try {
 		double f;

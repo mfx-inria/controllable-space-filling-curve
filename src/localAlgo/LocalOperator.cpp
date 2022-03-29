@@ -144,11 +144,9 @@ void LocalOperator::startShuffling(int multiplier, int champ) {
             if(checkPaperOp(random)) {
                 N = order.size();
                 if(_history.size() < 50) {
-                    if((++count)%40==0) _history.push_back(_cLinks);
+                    if((++count)%30==0) _history.push_back(_cLinks);
                 } else if(_history.size() < 200) {
-                    if((++count)%80==0) _history.push_back(_cLinks);
-                } else if(_history.size() < 300) {
-                    if((++count)%240==0) _history.push_back(_cLinks);
+                    if((++count)%100==0) _history.push_back(_cLinks);
                 } else {
                     if((++count)%4000==0) _history.push_back(_cLinks);
                 }
