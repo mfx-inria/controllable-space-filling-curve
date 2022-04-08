@@ -22,12 +22,9 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 	perfectMatching();
 	switchLink();
 	addCenters(shape, graph);
-	_union = UnionFind(_points.size());
-	for(int i = 0; i < (int) _points.size(); ++i)
-		for(int j : _cLinks[i])
-			_union.merge(i, j);
 	fuseIslands();
 	removeUnused(shape);
+	/*
 	std::vector<std::vector<int>> lks(_cLinks.size());
 	std::vector<std::pair<int, int>> edges;
 	for(int i = 0; i < (int) _links.size(); ++i) for(int j : _links[i]) if(i < j) edges.emplace_back(i, j);
@@ -38,6 +35,7 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 	}
 	Window::add2Q(0, _points, lks, "notC");
 	Window::add2Q(0, _points, _cLinks, "C");
+	*/
 }
 
 int CycleCreator::getNext(int node, int parent) {
@@ -266,6 +264,10 @@ std::vector<int> CycleCreator::getIdxs(int i) {
 }
 
 void CycleCreator::fuseIslands() {
+	_union = UnionFind(_points.size());
+	for(int i = 0; i < (int) _points.size(); ++i)
+		for(int j : _cLinks[i])
+			_union.merge(i, j);
 	if(_union.fullyMerged(_nbConnectedPoints)) return;
 	const int N = _points.size();
 	int count = 0;

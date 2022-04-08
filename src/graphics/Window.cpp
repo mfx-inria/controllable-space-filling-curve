@@ -149,8 +149,8 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 }
 
 void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name) {
-	const int W = 800;
-	const int H = 700;
+	const int W = 1125;
+	const int H = 900;
 	GLuint frameBuffer;
 	glGenFramebuffers(1, &frameBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
@@ -213,7 +213,7 @@ void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, co
 	glEnd();
 
 	// Show links
-	glLineWidth(5.0f);
+	glLineWidth(4.6f);
 	glBegin(GL_LINES);
 	glColor3f(17.f/255.f, 42.f/255.f, 60.f/255.f); // dark blue
 	for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) for(int k : {i, j}) drawVertex(points[k]);

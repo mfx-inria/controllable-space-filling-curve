@@ -557,7 +557,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 			points[i].y = x(2*i+1);
 			links[i] = {(i+1)%N, (i+N-1)%N};
 		}
-		// Window::add2Q(_layerIndex, points, links, "geom");
+		Window::add2Q(_layerIndex, points, links, "geom");
 		_prevF = f;
 		_prevX = x;
 	}
@@ -654,7 +654,13 @@ void Smoother::computeRadii(const Eigen::VectorXd &x, std::vector<glm::vec3> &pa
 		ClipperLib::Paths ps;
 		Eigen::VectorXd grad;
 		cell2Clipper(vd_c, 10, ps, _points, segments, x, grad);
-		ClipperLib::Paths clipped = clip(ps);
+		ClipperLib::Paths clipped;
+		try {
+			clipped = clip(ps);
+		} catch(const ClipperLib::clipperException &e) {
+			std::cerr << "Clipping error in path area computation..." << std::endl;
+			continue;
+		}
 
 		if(vd_c.contains_point() && vd_c.source_category() == boost::polygon::SOURCE_CATEGORY_SEGMENT_END_POINT) ind = (ind+1)%N;
 		for(ClipperLib::Path &P : clipped) {

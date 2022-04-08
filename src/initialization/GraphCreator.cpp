@@ -475,6 +475,7 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 				}
 			}
 		}
+		if(!S.empty()) cell.clear();
 	}
 
 	return graph;
