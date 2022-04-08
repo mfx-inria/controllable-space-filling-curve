@@ -149,8 +149,8 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 }
 
 void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name) {
-	const int W = 1920;
-	const int H = 1080;
+	const int W = 800;
+	const int H = 700;
 	GLuint frameBuffer;
 	glGenFramebuffers(1, &frameBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
@@ -215,11 +215,8 @@ void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, co
 	// Show links
 	glLineWidth(5.0f);
 	glBegin(GL_LINES);
-	for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
-		const glm::vec3 background(1.f, 1.f, 1.f);
-		glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.r)), .5f * (49.f/255.f + 1.f - std::round(background.g)), .5f * (70.f/255.f + 1.f - std::round(background.b)));
-		drawVertex(points[k]);
-	}
+	glColor3f(17.f/255.f, 42.f/255.f, 60.f/255.f); // dark blue
+	for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) for(int k : {i, j}) drawVertex(points[k]);
 	glEnd();
 
 	GLubyte* pixels = new GLubyte[3*W*H];

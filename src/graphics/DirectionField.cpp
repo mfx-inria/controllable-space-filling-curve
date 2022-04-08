@@ -280,7 +280,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 				raster({zone._points[zone._triangles[0][i]], zone._points[zone._triangles[0][i+1]], zone._points[zone._triangles[0][i+2]]}, c);
 			for(uint i = 0; i < zone._holes.size(); ++i)
 				for(uint j = 0; j < zone._triangles[i+1].size(); j += 3)
-					raster({zone._points[zone._triangles[i][j]], zone._points[zone._triangles[i][j+1]], zone._points[zone._triangles[i][j+2]]});
+					raster({zone._holes[i][zone._triangles[i+1][j]], zone._holes[i][zone._triangles[i+1][j+1]], zone._holes[i][zone._triangles[i+1][j+2]]});
 		}
 	}
 

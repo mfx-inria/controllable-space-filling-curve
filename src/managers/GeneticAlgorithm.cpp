@@ -114,8 +114,8 @@ void GeneticAlgorithm::shuffle() {
 			}
 			finishUpGeneration();
 			op = *bestPath(_champions.begin(), _champions.end());
-			for(auto &l : op._history) Window::add2Q(0, op.getPoints(), l, "comb");
-			Window::add2Q(0, op.getPoints(), op.getLinks(), "comb");
+			// for(auto &l : op._history) Window::add2Q(0, op.getPoints(), l, "comb");
+			// Window::add2Q(0, op.getPoints(), op.getLinks(), "comb");
 			op._history.clear();
 			glutPostRedisplay();
 
