@@ -99,6 +99,9 @@ private:
 
 class Smoother : public CVT {
 public:
+	// double laplacian_coeff = .125*10;
+	// double length_coeff = .4*25;
+	// double obj_coeff = 0.013*10;
 	double laplacian_coeff = .125;
 	double length_coeff = .4;
 	double obj_coeff = 0.013;

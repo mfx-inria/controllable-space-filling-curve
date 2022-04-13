@@ -149,7 +149,8 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 }
 
 void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, const std::vector<std::vector<int>> &links, const std::string &name) {
-	const int W = 1125;
+	// const int W = 1125; // brain
+	const int W = 860; // circle
 	const int H = 900;
 	GLuint frameBuffer;
 	glGenFramebuffers(1, &frameBuffer);
@@ -210,6 +211,14 @@ void Window::screenShot(int layerIndex, const std::vector<glm::vec2> &points, co
 			}
 		}
 	}
+	glEnd();
+
+
+	// Show points
+	glPointSize(6.f);
+	glBegin(GL_POINTS);
+	glColor3f(17.f/255.f, 42.f/255.f, 60.f/255.f); // dark blue
+	// for(int i = 0; i < (int) links.size(); i++) if(links[i].empty()) drawVertex(points[i]);
 	glEnd();
 
 	// Show links

@@ -20,8 +20,11 @@ CycleCreator::CycleCreator(const Shape &shape, Graph &graph) {
 		THROW_ERROR(str_format("Graph is not 3-connected! (valence %d found)", link.size()));
 	
 	perfectMatching();
+	Window::add2Q(0, _points, _cLinks, "matching");
 	switchLink();
+	Window::add2Q(0, _points, _cLinks, "decomposition");
 	addCenters(shape, graph);
+	Window::add2Q(0, _points, _cLinks, "refinement");
 	fuseIslands();
 	removeUnused(shape);
 	/*

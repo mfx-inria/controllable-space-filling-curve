@@ -1,3 +1,4 @@
 path brainCut.svg
-d 1.456
-seed 456
+d 2.4
+seed 4
+genNb 16

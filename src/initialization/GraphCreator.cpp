@@ -173,6 +173,8 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 		}
 	}
 	if(centroids.size() < 3) return false;
+	// std::vector<std::vector<int>> autoLink(centroids.size());
+	// Window::add2Q(layerIndex, centroids, autoLink, "seeds");
 
 	GraphCVT cvt(&shape, box, layerIndex);
 	graph = cvt.optimize(centroids);
@@ -188,7 +190,7 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 		for(const std::vector<glm::vec2> &in : shape._holes)
 			if(push_inside(in, p, EPS)) break;
 	}
-	// Window::add2Q(layerIndex, graph._points, graph._links, "init");
+	Window::add2Q(layerIndex, graph._points, graph._links, "init");
 
 	return true;
 }
@@ -392,8 +394,18 @@ double GraphCVT::operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 	if(f < _prevF) {
 		_prevF = f;
 		_prevX = x;
+		/*
 		Graph g = getGraph(x);
-		// Window::add2Q(_layerIndex, g._points, g._links, "init");
+		for(const Vec2 &p : _points) g._points.emplace_back(p.x / _scale + _mid.x, p.y / _scale + _mid.y);
+		g._links.resize(g._points.size());
+		for(const auto &[p, q] : _segments) {
+			g._points.emplace_back(p.x / _scale + _mid.x, p.y / _scale + _mid.y);
+			g._points.emplace_back(q.x / _scale + _mid.x, q.y / _scale + _mid.y);
+			g._links.push_back({(int)g._points.size()-1});
+			g._links.push_back({(int)g._points.size()-2});
+		}
+		Window::add2Q(_layerIndex, g._points, g._links, "init");
+		*/
 	}
 	return f;
 }

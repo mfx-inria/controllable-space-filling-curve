@@ -557,7 +557,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 			points[i].y = x(2*i+1);
 			links[i] = {(i+1)%N, (i+N-1)%N};
 		}
-		Window::add2Q(_layerIndex, points, links, "geom");
+		// Window::add2Q(_layerIndex, points, links, "geom");
 		_prevF = f;
 		_prevX = x;
 	}
