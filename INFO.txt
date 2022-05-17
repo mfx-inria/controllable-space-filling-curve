@@ -1,0 +1,5 @@
+Submission title: Closed space-filling curves with controlled orientation for 3D printing
+
+Authors: Adrien Bedel, Yoann Coudert-Osmont, Jonàs Martínez, Rahnuma Islam Nishat, Sue Whitesides, Sylvain Lefebvre
+
+OS: Ubuntu

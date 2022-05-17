@@ -29,6 +29,8 @@ Window::Window(int argc, char **argv, GeneticAlgorithm *ga): _ga(ga) {
 	const int num_pix = 600000;
 	int w = std::sqrt((num_pix * Globals::_SVGSize.x) / Globals::_SVGSize.y);
 	int h = num_pix / w;
+	glutSetOption(GLUT_MULTISAMPLE, 4);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(w, h);   // Set the window's initial width & height
 	glutCreateWindow("Space Filling Curve"); // Create a window with the given title
 

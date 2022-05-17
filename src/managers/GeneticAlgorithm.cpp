@@ -24,12 +24,14 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	std::cout << "===== Geometric Optimizer =====" << std::endl;
 	optimize();
 
+	/*
 	// Write GCODE
 	Printer printer(Machine::CR10S_PRO);
 	std::cout << "======= Writting GCODE ========" << std::endl;
 	printer.printToGcode(_layers, "colorVary", true);
 	printer.printToGcode(_layers, "colorNoVary", false);
 	std::cout << "============ DONE =============" << std::endl;
+	*/
 } catch(const CSFCerror &e) {
 	std::cerr << e.what() << std::endl;
 	glutLeaveMainLoop();
