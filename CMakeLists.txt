@@ -35,7 +35,7 @@ add_executable(${PROJECT_NAME}
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}
 	${Boost_LIBRARIES}
-	${GLUT_LIBRARY}
+	GLUT::GLUT
 	${OPENGL_LIBRARIES}
 	Eigen3::Eigen
 	Threads::Threads

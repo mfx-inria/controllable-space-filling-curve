@@ -150,7 +150,7 @@ void CycleCreator::switchLink() {
 }
 
 void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
-	int count2 = 0;
+	// int count2 = 0;
 	for(const std::vector<int> &cell : graph._cells) {
 		if(cell.size() < 3) continue;
 
@@ -273,7 +273,7 @@ void CycleCreator::fuseIslands() {
 			_union.merge(i, j);
 	if(_union.fullyMerged(_nbConnectedPoints)) return;
 	const int N = _points.size();
-	int count = 0;
+	// int count = 0;
 	// i ==== k       i ---- k
 	// |      |  ==>  ||    ||
 	// j ==== l       j ---- l

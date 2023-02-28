@@ -4,9 +4,10 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GL/freeglut.h>
 
-#include <queue>
 #include <algorithm>
+#include <array>
 #include <iostream>
+#include <queue>
 
 struct Segment {
 	glm::vec2 _a, _b, _v;

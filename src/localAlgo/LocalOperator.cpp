@@ -211,10 +211,10 @@ void LocalOperator::optimize()
         if (_final.first[i].z < 1e-4 || _final.first[i].z > 1.f)
         {
             int past = 1;
-            while (_final.first[(i + N - past) % N].z < 1e-4 || _final.first[(i + N - past) % N].z > 1.f && -past < N)
+            while (_final.first[(i + N - past) % N].z < 1e-4 || (_final.first[(i + N - past) % N].z > 1.f && -past < N))
                 past--;
             int future = 1;
-            while (_final.first[(i + future) % N].z < 1e-4 || _final.first[(i + future) % N].z > 1.f && future < N)
+            while (_final.first[(i + future) % N].z < 1e-4 || (_final.first[(i + future) % N].z > 1.f && future < N))
                 future++;
             if (future >= N || -past >= N)
                 continue;
