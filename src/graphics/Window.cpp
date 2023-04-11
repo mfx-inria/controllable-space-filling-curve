@@ -153,7 +153,7 @@ void Window::displayCycle() {
 	gluOrtho2D(_WinCenter.x - .5f*W/scale, _WinCenter.x + .5f*W/scale,
 			   _WinCenter.y + .5f*H/scale, _WinCenter.y - .5f*H/scale);
 	glEnable(GL_LINE_SMOOTH);
-	glLineWidth(3.0f);
+	glLineWidth(std::min(10.0f, 2.5f * std::pow(_zoom, 0.25f)));
 
 	const Layer &layer = _ga->_layers[_layerIndex];
 
@@ -195,11 +195,10 @@ void Window::displayCycle() {
 	// Show links
 	if(_graphMode != 2) {
 		for(const LocalOperator &op : layer._operators) {
-			auto [points, cLinks, oriLinks] = op.getGraph();
+			const auto [points, cLinks, oriLinks] = op.getGraph();
 			const std::vector<std::vector<int>> &links = _graphMode ? oriLinks : cLinks;
 			glBegin(GL_LINES);
-			glLineWidth(14.0f);
-			for(int i = 0; i < (int) cLinks.size(); i++) for(int j : links[i]) for(int k : {i, j}) {
+			for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) if(i < j) for(int k : {i, j}) {
 				const int z = op._zone[k];
 				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getObjZones()[z]._printColor) : COLORS[op.getObjZones()[z]._objcetive];
 				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));

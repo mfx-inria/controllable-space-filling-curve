@@ -149,9 +149,56 @@ void remove2coPoints(const Shape &border, Graph &graph) {
 		graph._links[k] = std::move(graph._links[i]);
 	}
 	graph._points.resize(newSize);
-	graph._points.shrink_to_fit();
 	graph._links.resize(newSize);
-	graph._links.shrink_to_fit();
+}
+
+void remove4coPoints(Graph &graph) {
+	std::vector<std::vector<int>> point2cell(graph._points.size());
+	for(int c = 0; c < (int) graph._cells.size(); ++c) for(int i : graph._cells[c]) point2cell[i].push_back(c);
+	for(int i = 0; i < (int) graph._points.size(); ++i) if(graph._links[i].size() == 4) {
+		const auto toAngle = [&](int j) { return std::atan2(graph._points[j].y - graph._points[i].y, graph._points[j].x - graph._points[i].x); };
+		std::vector<int> &l = graph._links[i];
+		std::sort(l.begin(), l.end(), [&](int j, int k) { return toAngle(j) < toAngle(k); });
+		float mul = 1.f;
+		loopMul:
+			mul *= .5f; 
+			if(mul < 1e-8f) {
+				// continue;
+				THROW_ERROR("Failed to split valence 4 vertex in two vertices");
+			}
+			const glm::vec2 a = mul * .5f * (graph._points[l[0]] + graph._points[l[1]]) + (1.f - mul) * graph._points[i];
+			const glm::vec2 b = mul * .5f * (graph._points[l[2]] + graph._points[l[3]]) + (1.f - mul) * graph._points[i];
+			for(int s = 0; s < 5; ++s) {
+				// (a, b), (a, 0), (a, 1), (b, 2), (b, 3)
+				const glm::vec2 &p = s < 3 ? a : b;
+				const glm::vec2 &q = s == 0 ? b : graph._points[l[s-1]];
+				for(const int c : point2cell[i]) {
+					const int n = graph._cells[c].size();
+					for(int j = 0; j < n; ++j) {
+						if(graph._cells[c][j] == i || graph._cells[c][(j+1)%n] == i) continue;
+						if(s != 0 && (graph._cells[c][j] == l[s-1] || graph._cells[c][(j+1)%n] == l[s-1])) continue;
+						if(Globals::intersect(p, graph._points[graph._cells[c][j]], q, graph._points[graph._cells[c][(j+1)%n]])) goto loopMul;
+					}
+				}
+			}
+		for(int j : {l[2], l[3]}) *std::find(graph._links[j].begin(), graph._links[j].end(), i) = (int) graph._points.size();
+		for(const int c : point2cell[i]) {
+			const int n = graph._cells[c].size();
+			int j = 0; while(graph._cells[c][j] != i) ++ j;
+			const bool sec0 = graph._cells[c][(j+n-1)%n] == l[2] || graph._cells[c][(j+n-1)%n] == l[3];
+			const bool sec1 = graph._cells[c][(j+1)%n] == l[2] || graph._cells[c][(j+1)%n] == l[3];
+			if(sec0) {
+				if(sec1) graph._cells[c][j] = (int) graph._points.size();
+				else graph._cells[c].insert(graph._cells[c].begin()+j, (int) graph._points.size());
+			} else if(sec1) graph._cells[c].insert(graph._cells[c].begin()+j+1, (int) graph._points.size());
+		}
+		graph._links.emplace_back(3);
+		graph._links.back()[0] = i; graph._links.back()[1] = graph._links[i][2]; graph._links.back()[2] = graph._links[i][3];
+		graph._links[i][2] = (int) graph._points.size();
+		graph._links[i].pop_back();
+		graph._points[i] = a;
+		graph._points.push_back(b);
+	}
 }
 
 // Create Graph from an SVG file.
@@ -176,8 +223,9 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 	GraphCVT cvt(&shape, box, layerIndex);
 	graph = cvt.optimize(centroids);
 
-	// remove 2co
+	// remove 2co and 4co
 	remove2coPoints(shape, graph);
+	remove4coPoints(graph);
 
 	// push points inside
 	const double EPS = 1e-5f * box.diag();
