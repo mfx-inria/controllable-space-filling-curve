@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 	if(!ifs) THROW_ERROR("can't read inpute file: " + path);
 	std::string fileName = "no svg path given";
 	int layerNb = 1;
+	GeneticAlgorithm ga;
 	while(ifs) {
 		std::string line, var, val;
 		std::getline(ifs, line);
@@ -42,6 +43,8 @@ int main(int argc, char** argv) {
 			else if(var == "d") Globals::_d = std::stof(val);
 			else if(var == "layerNb") layerNb = std::stoi(val);
 			else if(var == "seed") Globals::_seed = std::stoul(val);
+			else if(var == "genNb") ga._genNumber = std::stoi(val);
+			else std::cerr << "Unrecognized word: " << var << std::endl;
 		}
 	}
 
@@ -50,7 +53,6 @@ int main(int argc, char** argv) {
 	Globals::initVariables(layerNb);
 
 	// Start windows and process
-	GeneticAlgorithm ga;
 	Window hm(argc, argv, &ga);
 	Window::printHelp();
 	std::thread(&GeneticAlgorithm::process, &ga, fileName, layerNb).detach();

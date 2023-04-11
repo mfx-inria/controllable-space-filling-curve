@@ -10,9 +10,7 @@
 #include <atomic>
 #include <GL/freeglut.h>
 
-GeneticAlgorithm::GeneticAlgorithm() {
-	_nbIndividuals = _nbChampion * _sonPerChamp;
-}
+GeneticAlgorithm::GeneticAlgorithm(): _nbIndividuals(_nbChampion * _sonPerChamp) {}
 
 void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	// Algorithm
@@ -106,7 +104,7 @@ inline void printScores(const std::vector<LocalOperator> &ops) {
 }
 
 void GeneticAlgorithm::shuffle() {
-	for (Layer &layer : _layers) {
+	for(Layer &layer : _layers) {
 		for(LocalOperator &op : layer._operators) {
 			if(op.getPoints().size() < 7) continue;
 			_population.assign(_nbIndividuals, op);
