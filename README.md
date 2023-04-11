@@ -26,6 +26,8 @@ You can reproduce the right brain of Figure 15 and our result in Figure 25 using
 ./build/Hamilton input/brain.txt
 ./build/Hamilton input/people.txt
 ```
-or using the `figure15.sh` and `figure25.sh` scripts.
+or using the `figure15.sh` and `figure25.sh` scripts.  
+Edit: Since commit 31af9fdb results are no longer exactly those of the paper but only similar. 
+
 A window will appear. You will need to wait a bit before the model is displayed in the window. Some help to use the window will be printed in the terminal at the beginning.
 Moving your mouth in the Window will force the update of the window if you still see nothing after several seconds.
