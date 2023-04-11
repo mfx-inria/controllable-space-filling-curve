@@ -10,37 +10,37 @@
 
 enum Machine { COLOR, PRUSA, CR10S_PRO};
 
-#define STARTPOS 110.5f
+#define STARTPOS 110.5
 
 class Printer
 {
 private:
-    float                       _wantedSpeed = 600.f;
-    float                       _multiplier;
-    float                       _size;
-    float                       _printStartX;
-    float                       _printStartY;
+    double                       _wantedSpeed = 600.;
+    double                       _multiplier;
+    double                       _size;
+    double                       _printStartX;
+    double                       _printStartY;
     std::vector<std::string>    _printerPaths;
     unsigned int                _machineIdx;
-    float _extrusion;
+    double _extrusion;
 
 
 private:
     void    initSpeedMultiplier(const LocalOperator &, bool);
-    void    travel(std::fstream &, int, float, float);
+    void    travel(std::fstream &, int, double, double);
     void    printLineSpeed(std::fstream &, int, int, int, double, int);
-    void    printLine(std::fstream &, int, int, double, int, float, float);
-    void    resetAtPos(std::fstream &, float, float, int);
-    void    purge(std::fstream &, float, float, const glm::vec3 &);
-    void    printLineCustom(std::fstream &, float, float, double, const glm::vec3 &);
-    void    printLineCustom(std::fstream &, const glm::vec2 &, double, const glm::vec3 &);
-    void    printLineCustom(std::fstream &, const glm::vec2 & , double);
+    void    printLine(std::fstream &, int, int, double, int, double, double);
+    void    resetAtPos(std::fstream &, double, double, int);
+    void    purge(std::fstream &, double, double, const glm::dvec3 &);
+    void    printLineCustom(std::fstream &, double, double, double, const glm::dvec3 &);
+    void    printLineCustom(std::fstream &, const glm::dvec2 &, double, const glm::dvec3 &);
+    void    printLineCustom(std::fstream &, const glm::dvec2 & , double);
 
-    float   printBoundingSquare(std::fstream &, float , float , float , float , float, const glm::vec3 &);
+    double   printBoundingSquare(std::fstream &, double , double , double , double , double, const glm::dvec3 &);
     void    printLayers(std::fstream &, const std::vector<Layer> &, int, bool);
-    float   getExtrusionV(float , const std::vector<glm::vec3> &);
+    double   getExtrusionV(double , const std::vector<glm::dvec3> &);
     void    retract(std::fstream &, int);
-    std::pair<double, double>    calculateExtrusion(const std::vector<glm::vec3> &, float, int , int, bool);
+    std::pair<double, double>    calculateExtrusion(const std::vector<glm::dvec3> &, double, int , int, bool);
 
 public:
     Printer(const Machine &);

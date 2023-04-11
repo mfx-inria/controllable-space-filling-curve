@@ -10,18 +10,18 @@
 #include <queue>
 
 struct Segment {
-	glm::vec2 _a, _b, _v;
-	float _len;
+	glm::dvec2 _a, _b, _v;
+	double _len;
 
-	Segment(const glm::vec2 &a, const glm::vec2 &b): _a(a), _b(b), _v(b-a) {
+	Segment(const glm::dvec2 &a, const glm::dvec2 &b): _a(a), _b(b), _v(b-a) {
 		_len = glm::length(_v);
 		_v /= _len;
 	}
 	
-	inline float dist2(const glm::vec2 &p) const {
-		const glm::vec2 q = p - _a;
-		float x = _v.x * q.x + _v.y * q.y;
-		const float y = _v.y * q.x - _v.x * q.y;
+	inline double dist2(const glm::dvec2 &p) const {
+		const glm::dvec2 q = p - _a;
+		double x = _v.x * q.x + _v.y * q.y;
+		const double y = _v.y * q.x - _v.x * q.y;
 		if(x < 0) return x*x + y*y;
 		if(x > _len) {
 			x -= _len;
@@ -30,8 +30,8 @@ struct Segment {
 		return y*y;
 	}
 	
-	inline float normal_angle(const glm::vec2 &p) const {
-		const float t = std::clamp(_v.x * (p.x - _a.x) + _v.y * (p.y - _a.y), 0.f, _len);
+	inline double normal_angle(const glm::dvec2 &p) const {
+		const double t = std::clamp(_v.x * (p.x - _a.x) + _v.y * (p.y - _a.y), 0., _len);
 		return std::atan2(p.y - _a.y - t * _v.y, p.x - _a.x - t * _v.x);
 	}
 };
@@ -45,59 +45,59 @@ void DirectionField::init(int layerNb) {
 
 // get vector from the pixel of the vectorfield
 // image corresponding to the position of point
-glm::vec2 DirectionField::getVecAtPos(const glm::vec2 &point, int layerIndex) {
-	float x0f = point.x / Globals::_SVGSize.x * _imgWidth - .5f;
-	int x0 = x0f < 0.f ? x0f-1 : x0f;
-	float y0f = point.y / Globals::_SVGSize.y * _imgHeight - .5f;
-	int y0 = y0f < 0.f ? y0f-1 : y0f;
-	glm::vec2 V(0.f, 0.f);
-	float xc[2] = {x0+1.f-x0f, x0f-x0}, yc[2] = {y0+1.f-y0f, y0f-y0};
+glm::dvec2 DirectionField::getVecAtPos(const glm::dvec2 &point, int layerIndex) {
+	double x0f = point.x / Globals::_SVGSize.x * _imgWidth - .5;
+	int x0 = x0f < 0. ? x0f-1 : x0f;
+	double y0f = point.y / Globals::_SVGSize.y * _imgHeight - .5;
+	int y0 = y0f < 0. ? y0f-1 : y0f;
+	glm::dvec2 V(0., 0.);
+	double xc[2] = {x0+1.-x0f, x0f-x0}, yc[2] = {y0+1.-y0f, y0f-y0};
 	for(int x : {x0, x0+1}) if(x >= 0 && x < _imgWidth)
 			for(int y : {y0, y0+1}) if(y >= 0 && y < _imgHeight)
 					V += xc[x-x0] * yc[y-y0] * _vectorField[layerIndex][x + y * _imgWidth];
 	return V;
 }
 
-glm::vec2 DirectionField::getVecUnder(const glm::vec2 &a, const glm::vec2 &b, int layerIndex) {
-	if(std::abs(a.x - b.x) < 1e-7f) return glm::vec2(0.f, 0.f);
-	float x0f = a.x / Globals::_SVGSize.x * _imgWidth;
-	float x1f = b.x / Globals::_SVGSize.x * _imgWidth;
-	float y0f = a.y / Globals::_SVGSize.y * _imgHeight;
-	float y1f = b.y / Globals::_SVGSize.y * _imgHeight;
+glm::dvec2 DirectionField::getVecUnder(const glm::dvec2 &a, const glm::dvec2 &b, int layerIndex) {
+	if(std::abs(a.x - b.x) < 1e-7f) return glm::dvec2(0., 0.);
+	double x0f = a.x / Globals::_SVGSize.x * _imgWidth;
+	double x1f = b.x / Globals::_SVGSize.x * _imgWidth;
+	double y0f = a.y / Globals::_SVGSize.y * _imgHeight;
+	double y1f = b.y / Globals::_SVGSize.y * _imgHeight;
 	bool swapped = false;
 	if(x0f > x1f) {
 		std::swap(x0f, x1f);
 		std::swap(y0f, y1f);
 		swapped = true;
 	}
-	if(x1f <= 0.f || x0f >= _imgWidth) return glm::vec2(0., 0.);
-	float rat = (y1f - y0f) / (x1f - x0f);
-	if(x0f < 0.f) {
+	if(x1f <= 0. || x0f >= _imgWidth) return glm::dvec2(0., 0.);
+	double rat = (y1f - y0f) / (x1f - x0f);
+	if(x0f < 0.) {
 		y0f -= rat * x0f;
-		x0f = 0.f;
+		x0f = 0.;
 	}
 	if(x1f > _imgWidth) {
 		y0f += (_imgWidth - x1f) * rat;
 		x0f = _imgWidth;
 	}
 
-	glm::vec2 V(0.f, 0.f);
-	float xx = x0f, yy = y0f;
+	glm::dvec2 V(0., 0.);
+	double xx = x0f, yy = y0f;
 	int count = 0;
 	while(abs(x0f - x1f) > 1e-7) {
 		count++;
 		if (count == 1000)
 			return V;
-		float xf = std::floor(x0f+1.f);
-		float yf = yy + rat * (xf - xx);
+		double xf = std::floor(x0f+1.);
+		double yf = yy + rat * (xf - xx);
 		if(rat < 0) {
-			float f = std::ceil(y0f) - 1.f;
+			double f = std::ceil(y0f) - 1.;
 			if(yf < f) {
 				yf = f;
 				xf = xx + (yf - yy) / rat;
 			}
 		} else {
-			float f = std::floor(y0f) + 1.f;
+			double f = std::floor(y0f) + 1.;
 			if(yf > f) {
 				yf = f;
 				xf = xx + (yf - yy) / rat;
@@ -107,14 +107,14 @@ glm::vec2 DirectionField::getVecUnder(const glm::vec2 &a, const glm::vec2 &b, in
 			xf = x1f;
 			yf = y1f;
 		}
-		float my = .5f * (y0f + yf);
-		if(my > 0.f) {
+		double my = .5f * (y0f + yf);
+		if(my > 0.) {
 			int x = .5f * (x0f + xf);
-			float dx = xf - x0f;
+			double dx = xf - x0f;
 			if(my < _imgHeight) {
 				int y = my;
 				V += _vectorFieldSum[layerIndex][x + y * _imgWidth] * dx;
-				V -= _vectorField[layerIndex][x + y * _imgWidth] * (y+1.f-my) * dx;
+				V -= _vectorField[layerIndex][x + y * _imgWidth] * (y+1.-my) * dx;
 			} else V += _vectorFieldSum[layerIndex][x + (_imgHeight-1) * _imgWidth] * dx;
 		}
 		x0f = xf;
@@ -133,7 +133,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	const auto addShapeSegments = [&segments](const Shape &shape)->void {
 		for(int i = 1; i < (int) shape._points.size(); ++i)
 			segments.emplace_back(shape._points[i-1], shape._points[i]);
-		for(const std::vector<glm::vec2> &hole : shape._holes)
+		for(const std::vector<glm::dvec2> &hole : shape._holes)
 			for(int i = 1; i < (int) hole.size(); ++i)
 				segments.emplace_back(hole[i-1], hole[i]);
 	};
@@ -145,8 +145,8 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 					addShapeSegments(shape);
 			}
 	if(!anyVector) { // if there is no alignment objective the vector field is null
-		_vectorField[layerIndex].assign(_imgWidth * _imgHeight, glm::vec2(0.f, 0.f));
-		_vectorFieldSum[layerIndex].assign(_vectorField[layerIndex].size(), glm::vec2(0.f, 0.f));
+		_vectorField[layerIndex].assign(_imgWidth * _imgHeight, glm::dvec2(0., 0.));
+		_vectorFieldSum[layerIndex].assign(_vectorField[layerIndex].size(), glm::dvec2(0., 0.));
 		return;
 	}
 	for(const Shape &shape : borders) addShapeSegments(shape);
@@ -157,32 +157,32 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	//////////////
 
 	// The queue
-	typedef std::pair<float, int> QEl;
+	typedef std::pair<double, int> QEl;
 	std::priority_queue<QEl, std::vector<QEl>, std::greater<QEl>> Q;
 	// vector of distances
-	std::vector<float> D(_imgWidth * _imgHeight, std::numeric_limits<float>::max());
+	std::vector<double> D(_imgWidth * _imgHeight, std::numeric_limits<double>::max());
 	const int imS[2] { _imgWidth, _imgHeight };
-	const float rat[2] { Globals::_SVGSize.x / _imgWidth, Globals::_SVGSize.y / _imgHeight };
-	const float irat[2] { _imgWidth / Globals::_SVGSize.x, _imgHeight / Globals::_SVGSize.y };
+	const double rat[2] { Globals::_SVGSize.x / _imgWidth, Globals::_SVGSize.y / _imgHeight };
+	const double irat[2] { _imgWidth / Globals::_SVGSize.x, _imgHeight / Globals::_SVGSize.y };
 
 	// init Q
 	for(int i = 0; i < (int) segments.size(); ++i) {
 		const Segment &seg = segments[i];
 		const int h = std::abs(seg._v.x) < std::abs(seg._v.y);
-		const float slope = seg._v[h^1] / seg._v[h];
+		const double slope = seg._v[h^1] / seg._v[h];
 		int x0 = seg._a[h] * irat[h], x1 = seg._b[h] * irat[h];
 		if(x0 > x1) std::swap(x0, x1);
 		x0 = std::max(0, x0-1);
 		x1 = std::min(imS[h]-1, x1+1);
 		for(int x = x0; x <= x1; ++x) {
-			glm::vec2 p;
+			glm::dvec2 p;
 			p[h] = (x + 0.5f) * rat[h];
-			const float y = seg._a[h^1] + (p[h] - seg._a[h]) * slope;
-			const int y0 = std::max(0, int(y * irat[h^1] - 1.f));
+			const double y = seg._a[h^1] + (p[h] - seg._a[h]) * slope;
+			const int y0 = std::max(0, int(y * irat[h^1] - 1.));
 			const int y1 = std::min(imS[h^1]-1, y0 + 2);
 			for(int y = y0; y <= y1; ++y) {
 				p[h^1] = (y + 0.5f) * rat[h^1];
-				const float d = seg.dist2(p);
+				const double d = seg.dist2(p);
 				const int pix = h ? y + x * _imgWidth : x + y * _imgWidth;
 				if(d < D[pix]) {
 					D[pix] = d;
@@ -205,12 +205,12 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 		const int y0 = std::max(0, y-1);
 		const int y1 = std::min(_imgHeight, y+2);
 		for(int a = x0; a < x1; ++a) {
-			float xf = (a + 0.5f) * rat[0];
+			double xf = (a + 0.5f) * rat[0];
 			for(int b = y0; b < y1; ++b) {
 				int pix2 = a + b * _imgWidth;
 				if(nearest[pix2] == seg_ind) continue;
-				const glm::vec2 p(xf, (b + 0.5f) * rat[1]);
-				const float d2 = segments[seg_ind].dist2(p);
+				const glm::dvec2 p(xf, (b + 0.5f) * rat[1]);
+				const double d2 = segments[seg_ind].dist2(p);
 				if(d2 < D[pix2]) {
 					D[pix2] = d2;
 					nearest[pix2] = seg_ind;
@@ -224,28 +224,28 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 	// Rastzerize zones to init vector field
 	/////////
 
-	_vectorField[layerIndex].assign(nearest.size(), glm::vec2(0.f, 0.f));
+	_vectorField[layerIndex].assign(nearest.size(), glm::dvec2(0., 0.));
 
-	const auto raster = [&](std::array<glm::vec2, 3> &&v, const int c=-1) {
-		std::sort(v.begin(), v.end(), [&](const glm::vec2 &a, const glm::vec2 &b) { return a.y < b.y; });
-		for(glm::vec2 &a : v) for(int d : {0, 1}) a[d] *= irat[d];
+	const auto raster = [&](std::array<glm::dvec2, 3> &&v, const int c=-1) {
+		std::sort(v.begin(), v.end(), [&](const glm::dvec2 &a, const glm::dvec2 &b) { return a.y < b.y; });
+		for(glm::dvec2 &a : v) for(int d : {0, 1}) a[d] *= irat[d];
 		int y = v[0].y;
-		float yf = y + .5f;
+		double yf = y + .5f;
 		if(yf < v[0].y) ++y, ++yf;
-		const auto yloop = [&](float my, float &x0, float &x1, float &slope1, float &slope2) {
+		const auto yloop = [&](double my, double &x0, double &x1, double &slope1, double &slope2) {
 			for(; yf < my; ++y, ++yf, x0 += slope1, x1 += slope2) {
 				const int x = x0;
-				float xf = x + .5f;
+				double xf = x + .5f;
 				int pix = x + y * _imgWidth;
 				if(xf < x0) ++pix, ++xf;
 				for(; xf < x1; ++pix, ++xf) {
 					if(nearest[pix] == -1) THROW_ERROR("Nearest not filled!");
 					if(c == -1) {
-						_vectorField[layerIndex][pix] = glm::vec2(0.f, 0.f);
+						_vectorField[layerIndex][pix] = glm::dvec2(0., 0.);
 						continue;
 					}
-					const glm::vec2 p(xf * rat[0], yf * rat[1]);
-					float angle = segments[nearest[pix]].normal_angle(p);
+					const glm::dvec2 p(xf * rat[0], yf * rat[1]);
+					double angle = segments[nearest[pix]].normal_angle(p);
 					if(c) angle += M_PI_2;
 					_vectorField[layerIndex][pix].x = std::cos(angle);
 					_vectorField[layerIndex][pix].y = std::sin(angle);
@@ -253,19 +253,19 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 			}
 		};
 		if(yf < v[1].y) {
-			float slope1 = (v[1].x - v[0].x) / (v[1].y - v[0].y);
-			float slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
+			double slope1 = (v[1].x - v[0].x) / (v[1].y - v[0].y);
+			double slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
 			if(slope1 > slope2) std::swap(slope1, slope2);
-			const float dy = yf - v[0].y;
-			float x0 = v[0].x + dy * slope1;
-			float x1 = v[0].x + dy * slope2;
+			const double dy = yf - v[0].y;
+			double x0 = v[0].x + dy * slope1;
+			double x1 = v[0].x + dy * slope2;
 			yloop(v[1].y, x0, x1, slope1, slope2);
 		}
 		if(yf < v[2].y) {
-			float slope1 = (v[2].x - v[1].x) / (v[2].y - v[1].y);
-			float slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
-			float x0 = v[1].x + (yf - v[1].y) * slope1;
-			float x1 = v[0].x + (yf - v[0].y) * slope2;
+			double slope1 = (v[2].x - v[1].x) / (v[2].y - v[1].y);
+			double slope2 = (v[2].x - v[0].x) / (v[2].y - v[0].y);
+			double x0 = v[1].x + (yf - v[1].y) * slope1;
+			double x1 = v[0].x + (yf - v[0].y) * slope2;
 			if(x0 > x1) {
 				std::swap(slope1, slope2);
 				std::swap(x0, x1);
@@ -298,9 +298,9 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 
 	for(int i = 0; i < (int) nearest.size(); ++i) {
 		int x = i % _imgWidth, y = i / _imgWidth;
-		if(_vectorField[layerIndex][i] == glm::vec2(0., 0.)) continue;
+		if(_vectorField[layerIndex][i] == glm::dvec2(0., 0.)) continue;
 		const int K = 40;
-		glm::vec2 s(0.f, 0.f);
+		glm::dvec2 s(0., 0.);
 		for(int k = K; k >= 5; k >>= 1) {
 			const int x0 = std::max(0, x-k);
 			const int x1 = std::min(_imgWidth-1, x+k);
@@ -311,7 +311,7 @@ void DirectionField::initVectorField(const std::vector<std::vector<Shape>> &zone
 			if(y0 > 0) s -= _vectorFieldSum[layerIndex][x1 + (y0-1)*_imgWidth];
 			if(x0 > 0 && y0 > 0) s += _vectorFieldSum[layerIndex][x0-1 + (y0-1)*_imgWidth];
 		}
-		float angle = 2. * std::atan2(s.y, s.x);
+		double angle = 2. * std::atan2(s.y, s.x);
 		_vectorField[layerIndex][i].x = std::cos(angle);
 		_vectorField[layerIndex][i].y = std::sin(angle);
 	}

@@ -23,9 +23,9 @@ private:
 	bool                    _showPrintColor = true;
 	unsigned int            _layerIndex = 0;
 
-	glm::vec2               _WinCenter = glm::vec2(-1.f, 0.f);
-	float                   _zoom = 1.;
-	glm::vec2               _lastClikedPos;
+	glm::dvec2              _WinCenter = glm::dvec2(-1., 0.);
+	double                  _zoom = 1.;
+	glm::dvec2              _lastClikedPos;
 	bool                    _leftDown = false;
 
 private:
@@ -39,7 +39,7 @@ private:
 	static void             mouseCallback(int, int, int, int);
 	static void             motionCallback(int, int);
 
-	glm::vec2               getCoord(int, int);
+	glm::dvec2              getCoord(int, int);
 	void                    replaceCenter();
 
 };

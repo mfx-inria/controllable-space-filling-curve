@@ -75,7 +75,7 @@ inline void addCurvedEdge(const VD::edge_type *e, const std::vector<Vec2> &point
 
 inline Box<double> createBox(const Shape *shape) {
 	Box<double> box;
-	for(const glm::vec2 &p : shape->_points) box.update(p);
+	for(const glm::dvec2 &p : shape->_points) box.update(p);
 	return box;
 }
 
@@ -180,7 +180,7 @@ double CVT::point_fun_grad(const std::vector<Vec2> &P, const Vec2 &a, Vec2 &grad
 //////////////////
 
 void PointCVT::updateLink(const Eigen::VectorXd &x,
-						  std::vector<glm::vec2> &points,
+						  std::vector<glm::dvec2> &points,
 						  std::vector<std::vector<int>> &oriLink,
 						  std::vector<std::vector<int>> &cLink)
 {
@@ -257,7 +257,7 @@ void Smoother::construct_voro(const Eigen::VectorXd &x) {
 		Vec2 a(x(2*j), x(2*j+1));
 		std::swap(a, b);
 		box.update(a);
-		std::vector<float> ts;
+		std::vector<double> ts;
 		// TODO: check if this can be false
 		if(k >= 0) {
 			(*_colorZones)[k].getInter(a, b, ts);
@@ -265,13 +265,13 @@ void Smoother::construct_voro(const Eigen::VectorXd &x) {
 				_paths[k].emplace_back(i, 0., 1.);
 				continue;
 			}
-			ts.push_back(0.f);
+			ts.push_back(0.);
 		} else (*_colorZones)[k = 0].getInter(a, b, ts);
 		int l = k, k2 = -1;
 		do {
 			if(ts.size()&1) {
 				k2 = l;
-				ts.push_back(1.f);
+				ts.push_back(1.);
 			}
 			std::sort(ts.begin(), ts.end());
 			for(int m = 0; m < (int) ts.size(); m += 2)
@@ -338,16 +338,16 @@ inline double Smoother::isotropyEnergy(const Eigen::VectorXd &x, Eigen::VectorXd
 		double L = 0.;
 		for(int i = 0; i < N; ++i) {
 			int j = (i+1)%N;
-			glm::vec2 a(x(2*i), x(2*i+1)), b(x(2*j), x(2*j+1));
-			std::vector<float> ts;
+			glm::dvec2 a(x(2*i), x(2*i+1)), b(x(2*j), x(2*j+1));
+			std::vector<double> ts;
 			if(!prev_inside[i] && zone.isInside(a)) {
 				prev_inside[i] = true;
-				ts.push_back(0.f);
+				ts.push_back(0.);
 			}
 			zone.getInter(a, b, ts);
 			if(ts.empty()) continue;
 			std::sort(ts.begin(), ts.end());
-			if(ts.size()&1) ts.push_back(1.f);
+			if(ts.size()&1) ts.push_back(1.);
 			b -= a;
 			double angle = std::atan2(b.y, b.x);
 			if(angle >= M_PI_2) angle -= M_PI;
@@ -493,7 +493,7 @@ double Smoother::operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad) {
 
 	// Laplacian Regularization
 	const double gamma = laplacian_coeff * _shape->_area / N;
-	double lapF = 0.f;
+	double lapF = 0.;
 	for(int i = 0; i < N; ++i) {
 		int j = (i+N-1)%N, k = (i+1)%N;
 		double dx = x(2*i) - .5*(x(2*j) + x(2*k));
@@ -551,14 +551,14 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	_prevX.resize(x.size());
 
 	// smooth
-	const auto check = [&](const glm::vec2 &a, int i)->bool {
+	const auto check = [&](const glm::dvec2 &a, int i)->bool {
 		int jb = (i + x.size() - 2) % x.size(), jc = (i + 2) % x.size();
-		const glm::vec2 b(_prevX(jb), _prevX(jb+1)), c(_prevX(jc), _prevX(jc+1));
+		const glm::dvec2 b(_prevX(jb), _prevX(jb+1)), c(_prevX(jc), _prevX(jc+1));
 		if(_shape->intersect(a, b) || _shape->intersect(a, c)) return false;
 		for(int k = 0; k < (int) x.size(); k += 2) if(k != i) {
 			const int k2 = (k+2) % x.size();
 			if(k2 == i) continue;
-			const glm::vec2 d(_prevX(k), _prevX(k+1)), e(_prevX(k2), _prevX(k2+1));
+			const glm::dvec2 d(_prevX(k), _prevX(k+1)), e(_prevX(k2), _prevX(k2+1));
 			if(k != jb && k2 != jb && Globals::intersect(a, d, b, e)) return false;
 			if(k != jc && k2 != jc && Globals::intersect(a, d, c, e)) return false;
 		}
@@ -567,7 +567,7 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	for(int step = 0; step < 5; ++step) {
 		_prevX = x;
 		for(int i = 0; i < x.size(); i += 2) {
-			const glm::vec2 a(
+			const glm::dvec2 a(
 					(x((i+x.size()-2)%x.size()) + 10.*x(i) + x((i+2)%x.size())) / 12.,
 					(x((i+x.size()-1)%x.size()) + 10.*x(i+1) + x((i+3)%x.size())) / 12.
 			);
@@ -602,14 +602,14 @@ void Smoother::optimize(Eigen::VectorXd &x) {
 	x = _prevX;
 }
 
-void Smoother::computeRadii(const Eigen::VectorXd &x, std::vector<glm::vec3> &path) {
+void Smoother::computeRadii(const Eigen::VectorXd &x, std::vector<glm::dvec3> &path) {
 	int N = x.size()/2;
 
 	path.clear();
 	path.reserve(N);
 	Box box = _shape_box;
 	for(int i = 0; i < N; ++i) {
-		path.emplace_back(x(2*i), x(2*i+1), 0.f);
+		path.emplace_back(x(2*i), x(2*i+1), 0.);
 		box.update(Vec2(x(2*i), x(2*i+1)));
 	}
 	updateScale(box);

@@ -96,12 +96,12 @@ inline void generateNewGeneration(std::vector<LocalOperator> &population) {
 }
 
 inline void printScores(const std::vector<LocalOperator> &ops) {
-	std::vector<float> scores(ops.size());
+	std::vector<double> scores(ops.size());
 	for(int i = 0; i < (int) ops.size(); ++i) scores[i] = ops[i].getScore();
 	std::sort(scores.begin(), scores.end());
 	std::cout << "Generation scores" << std::endl;
 	std::cout << "[  ";
-	for(float s : scores) std::cout << s << "  ";
+	for(double s : scores) std::cout << s << "  ";
 	std::cout << "]" << std::endl;
 }
 

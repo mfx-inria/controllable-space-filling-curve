@@ -10,13 +10,13 @@
 // Class for graphs
 class Graph {
 public:
-	std::vector<glm::vec2>              _points;
+	std::vector<glm::dvec2>              _points;
 	std::vector<std::vector<int>>       _links;
 	std::vector<std::vector<int>>       _cells;
 
 	Graph() = default;
 
-	static glm::vec2 getCellCenter(const std::vector<int> &cell, const std::vector<glm::vec2> &points);
+	static glm::dvec2 getCellCenter(const std::vector<int> &cell, const std::vector<glm::dvec2> &points);
 	bool static initGraph(const Shape &shape, Graph &graph, int layerIndex);
 };
 

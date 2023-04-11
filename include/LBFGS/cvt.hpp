@@ -86,7 +86,7 @@ protected:
 struct PointCVT : public Voronoi {
 public:
 	PointCVT(const Shape *shape): Voronoi(shape) {}
-	void updateLink(const Eigen::VectorXd &x, std::vector<glm::vec2> &points, std::vector<std::vector<int>> &oriLink, std::vector<std::vector<int>> &cLink);
+	void updateLink(const Eigen::VectorXd &x, std::vector<glm::dvec2> &points, std::vector<std::vector<int>> &oriLink, std::vector<std::vector<int>> &cLink);
 private:
 	std::vector<Vec2> _points;
 };
@@ -106,7 +106,7 @@ public:
 	Smoother(const Shape *shape, const std::vector<Shape> *objZones, const std::vector<Shape> *colorZones, double vecArea, int layerIndex);
 
 	void optimize(Eigen::VectorXd &x);
-	void computeRadii(const Eigen::VectorXd &x, std::vector<glm::vec3> &path);
+	void computeRadii(const Eigen::VectorXd &x, std::vector<glm::dvec3> &path);
 	double operator()(Eigen::VectorXd &x, Eigen::VectorXd &grad);
 
 private:

@@ -9,7 +9,7 @@
 #include <fstream>
 #include <sstream>
 
-void getImageSize(const std::string &fileName, float &width, float &heihgt) {
+void getImageSize(const std::string &fileName, double &width, double &heihgt) {
 	struct NSVGimage* image;
 	image = nsvgParseFromFile(fileName.c_str(), "mm", 96);
 	if(image == nullptr) THROW_ERROR("can't parse input svg file: " + fileName);

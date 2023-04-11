@@ -14,7 +14,7 @@ public:
 	int _nbConnectedPoints;
 	std::vector<std::vector<int>>   _cLinks;
 	std::vector<std::vector<int>>   _links;
-	std::vector<glm::vec2>          _points;
+	std::vector<glm::dvec2>          _points;
 	UnionFind						_union;
 
 	CycleCreator(const Shape &shape, Graph &graph);

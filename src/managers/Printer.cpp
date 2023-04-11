@@ -9,14 +9,14 @@
 Printer::Printer(const Machine &machine)
 {
     _machineIdx = machine;
-    _printStartX = std::max(STARTPOS, 10.f);
-    _printStartY = std::max(STARTPOS, 5.f);
+    _printStartX = std::max(STARTPOS, 10.);
+    _printStartY = std::max(STARTPOS, 5.);
     _printerPaths = {"../resources/Printers/ColorPrinter/", "../resources/Printers/prusa/", "../resources/Printers/CR10S_Pro/"};
 }
 
 void Printer::printToGcode(const std::vector<Layer> &layers, const std::string &name, bool doVary)
 {
-    _size = std::max(Globals::_SVGSize.x, Globals::_SVGSize.y) + 10.f;
+    _size = std::max(Globals::_SVGSize.x, Globals::_SVGSize.y) + 10.;
     std::fstream myfi;
     myfi.open("core.gcode", std::ios::out);
     myfi << std::fixed;
@@ -38,8 +38,8 @@ void Printer::printToGcode(const std::vector<Layer> &layers, const std::string &
     output.close();
 }
 
-float pointDist(const glm::vec3 &a, const glm::vec3 &b) {
-	return glm::distance(glm::vec2(a), glm::vec2(b));
+double pointDist(const glm::dvec3 &a, const glm::dvec3 &b) {
+	return glm::distance(glm::dvec2(a), glm::dvec2(b));
 }
 
 void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, int layerMult, bool doVary)
@@ -48,7 +48,7 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
     if (layerMult == 1)
     {
         auto [p, c] = layers[0]._operators[0].getFinal();
-        purge(myfi, _printStartX - 5.f, _printStartY - 5.f, c[0]);
+        purge(myfi, _printStartX - 5., _printStartY - 5., c[0]);
     }
 
     double extrusion = 0.0;
@@ -62,10 +62,10 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
             auto [points, zones] = layer._operators[i].getFinal();
             int nb = points.size();
             std::cout << "nb = " << nb << std::endl;
-            float extrusionValue = getExtrusionV(layer._operators[i].getArea(), points);
+            double extrusionValue = getExtrusionV(layer._operators[i].getArea(), points);
 
             resetAtPos(myfi, points[0].x + _printStartX, points[0].y + _printStartY, 2000);
-            myfi << "G1 Z" << Globals::_outRPrismeHeight * (float)layerNb * (float)layerMult << std::endl;
+            myfi << "G1 Z" << Globals::_outRPrismeHeight * (double)layerNb * (double)layerMult << std::endl;
             if (layerNb * layerMult == 1)
                 myfi << "G1 600" << std::endl;
             else
@@ -99,17 +99,17 @@ void Printer::printLayers(std::fstream &myfi, const std::vector<Layer> &layers, 
             retract(myfi, 2000);
         }
         if (layerNb == 1)
-            _multiplier *= 2.f;
+            _multiplier *= 2.;
         std::cout << "extrusion = " << extrusion << std::endl;
         layerNb++;
     }
     _extrusion = extrusion;
-    myfi << "G1 Z" << Globals::_outRPrismeHeight * ((float)layerNb * (float)layerMult + 1.f) << std::endl;
+    myfi << "G1 Z" << Globals::_outRPrismeHeight * ((double)layerNb * (double)layerMult + 1.) << std::endl;
 }
 
-std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::vec3> &points, float extrusionValue, int j, int nb, bool doVary)
+std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::dvec3> &points, double extrusionValue, int j, int nb, bool doVary)
 {
-    double F = 0.f, E = 0.f;
+    double F = 0., E = 0.;
     if (doVary)
     {
         double X = 0.1f;
@@ -127,15 +127,15 @@ std::pair<double, double> Printer::calculateExtrusion(const std::vector<glm::vec
     return {F, E};
 }
 
-float Printer::getExtrusionV(float area, const std::vector<glm::vec3> &points)
+double Printer::getExtrusionV(double area, const std::vector<glm::dvec3> &points)
 {
-    float volume = area * Globals::_outRPrismeHeight;
-    float totalDist = 0;
+    double volume = area * Globals::_outRPrismeHeight;
+    double totalDist = 0;
     int nb = points.size();
     for (int i = 0; i < nb; i++)
         totalDist += pointDist(points[i], points[(i + 1) % nb]);
     std::cout << "total Dist = " << totalDist << std::endl;
-    float lengthFrameIn = volume / Globals::_frameInArea;
+    double lengthFrameIn = volume / Globals::_frameInArea;
     return (lengthFrameIn / totalDist);
 }
 
@@ -143,13 +143,13 @@ void Printer::initSpeedMultiplier(const LocalOperator &op, bool doVary)
 {
     if (!doVary)
     {
-        _multiplier = 1.f;
+        _multiplier = 1.;
         return ;
     }
     const auto &[points, zone] = op.getFinal();
     int nb = points.size();
-    float extrusionValue = getExtrusionV(op.getArea(), points);
-    double fullSpeed = 0.f;
+    double extrusionValue = getExtrusionV(op.getArea(), points);
+    double fullSpeed = 0.;
 
     for (int j = 0; j < nb; j++)
     {
@@ -160,7 +160,7 @@ void Printer::initSpeedMultiplier(const LocalOperator &op, bool doVary)
     _multiplier = _wantedSpeed / fullSpeed;
 }
 
-float Printer::printBoundingSquare(std::fstream &myfi, float cubeStartX, float cubeStartY, float cubeSize, float finalExtrud, float extrud, const glm::vec3 &color)
+double Printer::printBoundingSquare(std::fstream &myfi, double cubeStartX, double cubeStartY, double cubeSize, double finalExtrud, double extrud, const glm::dvec3 &color)
 {
     printLineCustom(myfi, cubeStartX, cubeStartY + cubeSize, finalExtrud, color);
     finalExtrud += extrud;
@@ -173,21 +173,21 @@ float Printer::printBoundingSquare(std::fstream &myfi, float cubeStartX, float c
     return finalExtrud;
 }
 
-void Printer::purge(std::fstream &myfi, float startX, float startY, const glm::vec3 &color)
+void Printer::purge(std::fstream &myfi, double startX, double startY, const glm::dvec3 &color)
 {
     myfi << "G1 Z" << Globals::_outRPrismeHeight << std::endl;
-    float cubeStartX = startX;
-    float cubeStartY = startY;
-    float cubeSize = _size;
-    float extrud = cubeSize * Globals::_extrusionHeight * 1.3f;
-    float finalExtrud = extrud;
+    double cubeStartX = startX;
+    double cubeStartY = startY;
+    double cubeSize = _size;
+    double extrud = cubeSize * Globals::_extrusionHeight * 1.3f;
+    double finalExtrud = extrud;
     resetAtPos(myfi, cubeStartX, cubeStartY, 700);
-    finalExtrud = printBoundingSquare(myfi, cubeStartX, cubeStartY, cubeSize, finalExtrud, extrud, glm::vec3(1, 0, 0));
+    finalExtrud = printBoundingSquare(myfi, cubeStartX, cubeStartY, cubeSize, finalExtrud, extrud, glm::dvec3(1, 0, 0));
     cubeStartX++;
     cubeStartY++;
     cubeSize -= 2;
     travel(myfi, 700, cubeStartX, cubeStartY);
-    finalExtrud = printBoundingSquare(myfi, cubeStartX, cubeStartY, cubeSize, finalExtrud, extrud, glm::vec3(0, 1, 0));
+    finalExtrud = printBoundingSquare(myfi, cubeStartX, cubeStartY, cubeSize, finalExtrud, extrud, glm::dvec3(0, 1, 0));
     cubeStartX++;
     cubeStartY++;
     cubeSize -= 2;
@@ -208,7 +208,7 @@ void Printer::retract(std::fstream &myfi, int speed)
         myfi << "G0 F" << 300 << " E-0.500000" << std::endl;
 }
 
-void Printer::resetAtPos(std::fstream &myfi, float x, float y, int speed)
+void Printer::resetAtPos(std::fstream &myfi, double x, double y, int speed)
 {
     travel(myfi, 4800, x, y);
     myfi << ";prime" << std::endl;
@@ -216,7 +216,7 @@ void Printer::resetAtPos(std::fstream &myfi, float x, float y, int speed)
     myfi << "G92 E0.0" << std::endl;
 }
 
-void Printer::travel(std::fstream &myfi, int speed, float x, float y)
+void Printer::travel(std::fstream &myfi, int speed, double x, double y)
 {
     myfi << ";travel" << std::endl;
     myfi << "G0"
@@ -225,7 +225,7 @@ void Printer::travel(std::fstream &myfi, int speed, float x, float y)
          << " Y" << y << std::endl;
 }
 
-void Printer::printLineCustom(std::fstream &myfi, const glm::vec2 &pos, double extrusion, const glm::vec3 &color) {
+void Printer::printLineCustom(std::fstream &myfi, const glm::dvec2 &pos, double extrusion, const glm::dvec3 &color) {
     myfi << "G1"
          << " X" << pos.x + _printStartX
          << " Y" << pos.y + _printStartY
@@ -235,7 +235,7 @@ void Printer::printLineCustom(std::fstream &myfi, const glm::vec2 &pos, double e
          << " C" << color.z << std::endl;
 }
 
-void Printer::printLineCustom(std::fstream &myfi, float x, float y, double extrusion, const glm::vec3 &color) {
+void Printer::printLineCustom(std::fstream &myfi, double x, double y, double extrusion, const glm::dvec3 &color) {
     myfi << "G1"
          << " X" << x
          << " Y" << y
@@ -249,7 +249,7 @@ void Printer::printLineCustom(std::fstream &myfi, float x, float y, double extru
     myfi << std::endl;
 }
 
-void Printer::printLineCustom(std::fstream &myfi, const glm::vec2 &pos, double extrusion)
+void Printer::printLineCustom(std::fstream &myfi, const glm::dvec2 &pos, double extrusion)
 {
     myfi << "G1"
          << " X" << pos.x + _printStartX

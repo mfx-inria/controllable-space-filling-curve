@@ -17,7 +17,7 @@ typedef unsigned int uint;
 // Objectives
 enum { GREY,        BLUE,      RED,           GREEN,         YELLOW,       CYAN,        BLACK   };
 enum OBJECTIVE { ANISOTROPY,  ISOTROPY,  VECTOR_FIELD,  ORTHO_VECTOR,  VECTOR_ZONE,  ORTHO_ZONE,  NOTHING };
-const std::vector<glm::vec3> COLORS = {
+const std::vector<glm::dvec3> COLORS = {
 	{ 0.5f, 0.5f, 0.5f }, // GREY
 	{ 0.0f, 0.0f, 1.0f }, // BLUE
 	{ 1.0f, 0.0f, 0.0f }, // RED
@@ -48,15 +48,15 @@ public:
 	inline static unsigned int  _nbThread = std::thread::hardware_concurrency();
 
 	// Size of SVG file
-	inline static glm::vec2     _SVGSize;
-	inline static float			_d = 1.2; // spacing for the graph construction
+	inline static glm::dvec2     	_SVGSize;
+	inline static double			_d = 1.2; // spacing for the graph construction
 
 public:
 	static void		initVariables(int layerNb);
-	static float	polygonArea(const std::vector<glm::vec2> &);
-	static bool		isInPoly(const std::vector<glm::vec2> &, const glm::vec2 &);
-	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &);
-	static bool		intersect(const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, const glm::vec2 &, float &);
+	static double	polygonArea(const std::vector<glm::dvec2> &);
+	static bool		isInPoly(const std::vector<glm::dvec2> &, const glm::dvec2 &);
+	static bool		intersect(const glm::dvec2 &, const glm::dvec2 &, const glm::dvec2 &, const glm::dvec2 &);
+	static bool		intersect(const glm::dvec2 &, const glm::dvec2 &, const glm::dvec2 &, const glm::dvec2 &, double &);
 };
 
 //===============

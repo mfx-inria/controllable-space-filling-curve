@@ -9,10 +9,10 @@
 #include <GL/freeglut.h>
 #include <iostream>
 
-const float zoom_step = 1.1f;
+const double zoom_step = 1.1f;
 
-#define COLOR_INT(color) glColor3f( ((color) & 0xff) / 255.f, (((color) >> 8) & 0xff) / 255.f, (((color) >> 16) & 0xff) / 255.f )
-#define COLOR_INT2(color) glm::vec3( ((color) & 0xff) / 255.f, (((color) >> 8) & 0xff) / 255.f, (((color) >> 16) & 0xff) / 255.f )
+#define COLOR_INT(color) glColor3f( ((color) & 0xff) / 255., (((color) >> 8) & 0xff) / 255., (((color) >> 16) & 0xff) / 255. )
+#define COLOR_INT2(color) glm::dvec3( ((color) & 0xff) / 255., (((color) >> 8) & 0xff) / 255., (((color) >> 16) & 0xff) / 255. )
 
 ////////////////////////
 //
@@ -92,16 +92,16 @@ void Window::keyPressed(unsigned char key, int x, int y) {
 }
 
 void Window::replaceCenter() {
-	float dist = glm::distance(_WinCenter, .5f*Globals::_SVGSize);
-	float max_allowed_dist = .5f*glm::length(Globals::_SVGSize) *  (1.f - 1.f / _zoom);
-	if(dist > max_allowed_dist) _WinCenter = .5f*Globals::_SVGSize + max_allowed_dist / dist * (_WinCenter - .5f*Globals::_SVGSize);
+	double dist = glm::distance(_WinCenter, .5*Globals::_SVGSize);
+	double max_allowed_dist = .5f*glm::length(Globals::_SVGSize) *  (1. - 1. / _zoom);
+	if(dist > max_allowed_dist) _WinCenter = .5*Globals::_SVGSize + max_allowed_dist / dist * (_WinCenter - .5*Globals::_SVGSize);
 }
 
-glm::vec2 Window::getCoord(int x0, int y0) {
-	float W = (float) glutGet(GLUT_WINDOW_WIDTH);
-	float H = (float) glutGet(GLUT_WINDOW_HEIGHT);
-	float scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y) * _zoom;
-	glm::vec2 p = _WinCenter;
+glm::dvec2 Window::getCoord(int x0, int y0) {
+	double W = (double) glutGet(GLUT_WINDOW_WIDTH);
+	double H = (double) glutGet(GLUT_WINDOW_HEIGHT);
+	double scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y) * _zoom;
+	glm::dvec2 p = _WinCenter;
 	p.x += (x0 - .5f*W) / scale;
 	p.y += (y0 - .5f*H) / scale;
 	return p;
@@ -120,21 +120,21 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 			_leftDown = false;
 		}
 	} else {
-		glm::vec2 p = getCoord(x0, y0);
+		glm::dvec2 p = getCoord(x0, y0);
 		if(button == GLUT_LEFT_BUTTON) {
 			_lastClikedPos = p;
 			_leftDown = true;
 		} else if(button == GLUT_RIGHT_BUTTON) {
 			std::cout << "x = " << p.x << ", y = " << p.y << std::endl;
 		} else if(button == 3) {
-			p.x = std::max(0.f, std::min(Globals::_SVGSize.x, p.x));
-			p.y = std::max(0.f, std::min(Globals::_SVGSize.y, p.y));
+			p.x = std::max(0., std::min(Globals::_SVGSize.x, p.x));
+			p.y = std::max(0., std::min(Globals::_SVGSize.y, p.y));
 			_zoom *= zoom_step;
 			_WinCenter = p + (_WinCenter - p) / zoom_step;
 		} else if(button == 4) {
-			p.x = std::max(0.f, std::min(Globals::_SVGSize.x, p.x));
-			p.y = std::max(0.f, std::min(Globals::_SVGSize.y, p.y));
-			float div = std::min(zoom_step, _zoom);
+			p.x = std::max(0., std::min(Globals::_SVGSize.x, p.x));
+			p.y = std::max(0., std::min(Globals::_SVGSize.y, p.y));
+			double div = std::min(zoom_step, _zoom);
 			_zoom /= div;
 			_WinCenter = p + (_WinCenter - p) * div;
 			replaceCenter();
@@ -145,19 +145,19 @@ void Window::mouseClicked(int button, int state, int x0, int y0) {
 
 // Display
 void Window::displayCycle() {
-	const float W = (float) glutGet(GLUT_WINDOW_WIDTH);
-	const float H = (float) glutGet(GLUT_WINDOW_HEIGHT);
+	const double W = (double) glutGet(GLUT_WINDOW_WIDTH);
+	const double H = (double) glutGet(GLUT_WINDOW_HEIGHT);
 	glLoadIdentity();
-	float scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y) * _zoom;
-	if(_WinCenter.x < 0.f) _WinCenter = .5f * Globals::_SVGSize;
-	gluOrtho2D(_WinCenter.x - .5f*W/scale, _WinCenter.x + .5f*W/scale,
-			   _WinCenter.y + .5f*H/scale, _WinCenter.y - .5f*H/scale);
+	double scale = std::min(W / Globals::_SVGSize.x, H / Globals::_SVGSize.y) * _zoom;
+	if(_WinCenter.x < 0.) _WinCenter = .5 * Globals::_SVGSize;
+	gluOrtho2D(_WinCenter.x - .5*W/scale, _WinCenter.x + .5*W/scale,
+			   _WinCenter.y + .5*H/scale, _WinCenter.y - .5*H/scale);
 	glEnable(GL_LINE_SMOOTH);
-	glLineWidth(std::min(10.0f, 2.5f * std::pow(_zoom, 0.25f)));
+	glLineWidth(std::min(10., 2.5 * std::pow(_zoom, 0.25)));
 
 	const Layer &layer = _ga->_layers[_layerIndex];
 
-	const auto drawVertex = [&](const glm::vec2 &point){ glVertex2f(point.x, point.y); };
+	const auto drawVertex = [&](const glm::dvec2 &point){ glVertex2f(point.x, point.y); };
 
 	// Show background
 	glBegin(GL_TRIANGLES);
@@ -166,7 +166,7 @@ void Window::displayCycle() {
 			if(_showPrintColor) COLOR_INT(zone._printColor);
 			else glColor3f(COLORS[zone._objcetive].x, COLORS[zone._objcetive].y, COLORS[zone._objcetive].z);
 			for(uint i : zone._triangles[0]) drawVertex(zone._points[i]);
-			glColor3f(1.f, 1.f, 1.f);
+			glColor3f(1., 1., 1.);
 			for(uint i = 0; i < zone._holes.size(); ++i)
 				for(uint j : zone._triangles[i+1]) drawVertex(zone._holes[i][j]);
 		}
@@ -182,7 +182,7 @@ void Window::displayCycle() {
 				drawVertex(zone._points[i - 1]);
 				drawVertex(zone._points[i]);
 			}
-			for(const std::vector<glm::vec2> &hole : zone._holes) {
+			for(const std::vector<glm::dvec2> &hole : zone._holes) {
 				for(int i = 1; i < (int) hole.size(); ++i) {
 					drawVertex(hole[i - 1]);
 					drawVertex(hole[i]);
@@ -200,8 +200,8 @@ void Window::displayCycle() {
 			glBegin(GL_LINES);
 			for(int i = 0; i < (int) links.size(); i++) for(int j : links[i]) if(i < j) for(int k : {i, j}) {
 				const int z = op._zone[k];
-				const glm::vec3 background = _showPrintColor ? COLOR_INT2(op.getObjZones()[z]._printColor) : COLORS[op.getObjZones()[z]._objcetive];
-				glColor3f(.5f * (20.f/255.f + 1.f - std::round(background.x)), .5f * (49.f/255.f + 1.f - std::round(background.x)), .5f * (70.f/255.f + 1.f - std::round(background.x)));
+				const glm::dvec3 background = _showPrintColor ? COLOR_INT2(op.getObjZones()[z]._printColor) : COLORS[op.getObjZones()[z]._objcetive];
+				glColor3f(.5f * (20./255. + 1. - std::round(background.x)), .5f * (49./255. + 1. - std::round(background.x)), .5f * (70./255. + 1. - std::round(background.x)));
 				drawVertex(points[k]);
 			}
 			glEnd();
@@ -210,21 +210,21 @@ void Window::displayCycle() {
 
 	// Show vecfield
 	if(_showVecField) {
-		int nx = W / 13.f, ny = H / 13.f;
-		float dx = (W - 13.f * (nx-1)) / 2.f + scale*_WinCenter.x - .5f*W;
-		float dy = (H - 13.f * (ny-1)) / 2.f + scale*_WinCenter.y - .5f*H;
+		int nx = W / 13., ny = H / 13.;
+		double dx = (W - 13. * (nx-1)) / 2. + scale*_WinCenter.x - .5f*W;
+		double dy = (H - 13. * (ny-1)) / 2. + scale*_WinCenter.y - .5f*H;
 		glLineWidth(1.8f);
 		glBegin(GL_LINES);
 		for(int i = 0; i < nx; ++i) {
 			for(int j = 0; j < ny; ++j) {
-				float cx = (dx + 13.f*i) / scale;
-				float cy = (dy + 13.f*j) / scale;
-				glm::vec2 p(cx, cy);
-				glm::vec2 v = DirectionField::getVecAtPos(p, _layerIndex);
-				float len = glm::length(v);
-				float angle = std::atan2(v.y, v.x) / 2.f;
-				float c = 5.7f * len * std::cos(angle) / scale;
-				float s = 5.7f * len * std::sin(angle) / scale;
+				double cx = (dx + 13.*i) / scale;
+				double cy = (dy + 13.*j) / scale;
+				glm::dvec2 p(cx, cy);
+				glm::dvec2 v = DirectionField::getVecAtPos(p, _layerIndex);
+				double len = glm::length(v);
+				double angle = std::atan2(v.y, v.x) / 2.;
+				double c = 5.7f * len * std::cos(angle) / scale;
+				double s = 5.7f * len * std::sin(angle) / scale;
 				glColor3f(.9f, .9f, .9f);
 				glVertex2f(cx - c, cy - s);
 				glColor3f(.1f, .1f, .1f);
@@ -236,7 +236,7 @@ void Window::displayCycle() {
 }
 
 void Window::display() {
-	glClearColor(1.f, 1.f, 1.f, 1.f);   // Set background color to black and opaque
+	glClearColor(1., 1., 1., 1.);   // Set background color to black and opaque
 	glClear(GL_COLOR_BUFFER_BIT);       // Clear the color buffer (background)
 	if(_ga->getNbReadyLayers() > 0) displayCycle();
 	glutSwapBuffers();

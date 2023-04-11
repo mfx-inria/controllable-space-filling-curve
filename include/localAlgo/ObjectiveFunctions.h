@@ -12,34 +12,34 @@ class ObjectiveFunctions {
 struct Edge {
 	int zone;
 	int i, j;
-	float len, l2;
+	double len, l2;
 	Edge() = default;
 	Edge(int z): zone(z) {}
 };
 struct Segment {
-	float               vecW, vecS;
+	double              vecW, vecS;
 	std::vector<Edge>   iso;
 	int                 zon;
-	Segment(): vecW(0.f), vecS(0.f), iso(), zon(0) {}
+	Segment(): vecW(0.), vecS(0.), iso(), zon(0) {}
 };
 
 protected:
 	Shape                           _shape;
 	std::vector<Shape>              _objZones;
-	std::vector<glm::vec2>          _points;
+	std::vector<glm::dvec2>          _points;
 	std::vector<std::vector<int>>   _links;
 	std::vector<std::vector<int>>   _cLinks;
 
 	int                                     _layerIndex;
-	float                                   _score = 0.f;
+	double                                  _score = 0.;
 	// ISOTROPY
 	const static int                        _nSamples = 100;
-	std::vector<std::vector<float>>         _distribs;
+	std::vector<std::vector<double>>        _distribs;
 	// VECTOR
-	float                                   _segCellRadius;
-	float                                   _vecArea;
-	float                                   _vecWeight;
-	float                                   _vecScore;
+	double                                  _segCellRadius;
+	double                                  _vecArea;
+	double                                  _vecWeight;
+	double                                  _vecScore;
 	// ZONING
 	int                                     _nCrosses;
 	
@@ -53,35 +53,35 @@ public:
 	ObjectiveFunctions() = default;
 	ObjectiveFunctions(Shape &&shape, std::vector<Shape> &&objZones, int layerIndex);
 
-	float   checkDirection(const std::vector<int> &, const std::vector<std::pair<int, int>> &, const std::vector<std::pair<int, int>> &);
+	double  checkDirection(const std::vector<int> &, const std::vector<std::pair<int, int>> &, const std::vector<std::pair<int, int>> &);
 	void    applyShift(const std::vector<int> &, const std::vector<std::pair<int, int>> &, const std::vector<std::pair<int, int>> &);
 
-	float   getScore() const;
+	double  getScore() const;
 	void    calculateScore();
-	const std::vector<glm::vec2>&                                                                                               getPoints() const;
+	const std::vector<glm::dvec2>&                                                                                               getPoints() const;
 	const std::vector<std::vector<int>> &                                                                                       getLinks() const;
-	std::tuple<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &, const std::vector<std::vector<int>> &>    getGraph() const;
-	std::pair<const std::vector<glm::vec2> &, const std::vector<std::vector<int>> &>                                            getCycle() const;
+	std::tuple<const std::vector<glm::dvec2> &, const std::vector<std::vector<int>> &, const std::vector<std::vector<int>> &>    getGraph() const;
+	std::pair<const std::vector<glm::dvec2> &, const std::vector<std::vector<int>> &>                                            getCycle() const;
 	const Shape &               getBorder() const;
 	const std::vector<Shape>&   getObjZones() const;
 	int                         getColor(int) const;
-	float                       getArea() const;
+	double                      getArea() const;
 
 protected:
 	void                        computeZone();
 	void                        computeData();
 
 private:
-	float                       getMeanScore();
+	double                      getMeanScore();
 	const Segment&              getSegment(int, int);
 	void                        addSegment(int, int);
 	void                        rmSegment(int, int);
 	void                        removeLink(int, int);
 	void                        createLink(int, int);
 
-	void    createEdgeVec(const glm::vec2 &, const glm::vec2 &, float &, float &);
-	Edge    createEdgeIso(int, const glm::vec2 &);
-	float   getWassersteinDistance(int) const;
+	void    createEdgeVec(const glm::dvec2 &, const glm::dvec2 &, double &, double &);
+	Edge    createEdgeIso(int, const glm::dvec2 &);
+	double  getWassersteinDistance(int) const;
 
 };
 

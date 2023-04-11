@@ -7,48 +7,48 @@
 #include <algorithm>
 
 // Retrun true if p is at a distance < sqrt(eps2) from cycle 
-inline bool isNearAux(const std::vector<glm::vec2> &cycle, const glm::vec2 &p, float eps2=1e-10f) {
+inline bool isNearAux(const std::vector<glm::dvec2> &cycle, const glm::dvec2 &p, double eps2=1e-10f) {
 	for(int i = 1; i < (int) cycle.size(); ++i) {
-		const glm::vec2 v = cycle[i-1] - cycle[i];
-		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0.f, 1.f), p) < eps2) return true;
+		const glm::dvec2 v = cycle[i-1] - cycle[i];
+		if(glm::distance2(cycle[i] + v * std::clamp(glm::dot(v, p - cycle[i])/glm::dot(v, v), 0., 1.), p) < eps2) return true;
 	}
 	return false;
 }
 
 // Retrun true if p is at a distance < sqrt(eps2) from shape border 
-bool Shape::isNear(const glm::vec2 &p, float eps2) const {
+bool Shape::isNear(const glm::dvec2 &p, double eps2) const {
 	if(isNearAux(_points, p, eps2)) return true;
-	for(const std::vector<glm::vec2> &hole : _holes)
+	for(const std::vector<glm::dvec2> &hole : _holes)
 		if(isNearAux(hole, p, eps2)) return true;
 	return false;
 }
 
 // is p inside of _points
-bool Shape::isInside(const glm::vec2 &p) const {
+bool Shape::isInside(const glm::dvec2 &p) const {
 	if(!Globals::isInPoly(_points, p)) return false;
-	for(const std::vector<glm::vec2> &hole : _holes)
+	for(const std::vector<glm::dvec2> &hole : _holes)
 		if(Globals::isInPoly(hole, p))
 			return false;
 	return true;
 }
 
-bool Shape::intersect(const glm::vec2 &a, const glm::vec2 &b) const {
+bool Shape::intersect(const glm::dvec2 &a, const glm::dvec2 &b) const {
 	for(int i = 1; i < (int) _points.size(); ++i)
 		if(Globals::intersect(a, _points[i-1], b, _points[i]))
 			return true;
-	for(const std::vector<glm::vec2> &hole : _holes)
+	for(const std::vector<glm::dvec2> &hole : _holes)
 		for(int i = 1; i < (int) hole.size(); ++i)
 			if(Globals::intersect(a, hole[i-1], b, hole[i]))
 				return true;
 	return false;
 }
 
-void Shape::getInter(const glm::vec2 &a, const glm::vec2 &b, std::vector<float> &ts) const {
-	float t;
+void Shape::getInter(const glm::dvec2 &a, const glm::dvec2 &b, std::vector<double> &ts) const {
+	double t;
 	for(int i = 1; i < (int) _points.size(); ++i)
 		if(Globals::intersect(a, _points[i-1], b, _points[i], t))
 			ts.push_back(t);
-	for(const std::vector<glm::vec2> &hole : _holes)
+	for(const std::vector<glm::dvec2> &hole : _holes)
 		for(int i = 1; i < (int) hole.size(); ++i)
 			if(Globals::intersect(a, hole[i-1], b, hole[i], t))
 				ts.push_back(t);
@@ -59,15 +59,15 @@ void Shape::getInter(const glm::vec2 &a, const glm::vec2 &b, std::vector<float> 
 //=========================//
 
 // Return the diagonal of the smallest axis-aligned rectangle containing shapes
-inline float getDiag(const std::vector<Shape> &shapes) {
-	Box<float> box;
-	for(const Shape &s : shapes) for(const glm::vec2 &p : s._points) box.update(p);
+inline double getDiag(const std::vector<Shape> &shapes) {
+	Box<double> box;
+	for(const Shape &s : shapes) for(const glm::dvec2 &p : s._points) box.update(p);
 	return box.diag();
 }
 
 void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes);
-std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, float eps);
-std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, float eps);
+std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, double eps);
+std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, double eps);
 
 void Shape::read(const std::string &fileName,
 					std::vector<Shape> &shapes,
@@ -76,7 +76,7 @@ void Shape::read(const std::string &fileName,
 					int layerIndex)
 {
 	getShapeFromSVG(fileName, shapes);
-	const float eps = 1e-5f * getDiag(shapes);
+	const double eps = 1e-5f * getDiag(shapes);
 	objZones = regroupObjZones(shapes, eps);
 	colorZones = mergeColorZones(objZones, eps);
 
@@ -95,11 +95,11 @@ void Shape::read(const std::string &fileName,
 
 // Return the index of the nearest objective from color
 inline OBJECTIVE getNearestObjective(unsigned int color) {
-	glm::vec3 rgbCol((color & 0xff) / 255.f, ((color >> 8) & 0xff) / 255.f, ((color >> 16) & 0xff) / 255.f);
-	float minDiff = std::numeric_limits<float>::max();
+	glm::dvec3 rgbCol((color & 0xff) / 255., ((color >> 8) & 0xff) / 255., ((color >> 16) & 0xff) / 255.);
+	double minDiff = std::numeric_limits<double>::max();
 	int index = -1;
 	for(int i = 0; i < (int) COLORS.size(); i++) {
-		float diff = glm::distance(rgbCol, COLORS[i]);
+		double diff = glm::distance(rgbCol, COLORS[i]);
 		if(diff < minDiff) {
 			minDiff = diff;
 			index = i;
@@ -117,7 +117,7 @@ void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
 	if(image == nullptr) throw std::runtime_error("can't parse input svg file: " + fileName);
 	for(NSVGshape *shape = image->shapes; shape != NULL; shape = shape->next) {
 		std::vector<Shape> shapesAdd, holesAdd;
-		float maxArea = 0.f;
+		double maxArea = 0.;
 		for(NSVGpath *path = shape->paths; path != NULL; path = path->next) {
 			Shape polygon;
 			polygon._points.reserve(path->npts/3+1);
@@ -130,14 +130,14 @@ void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
 
 			if(shape->fill.type) polygon._objcetive = getNearestObjective(shape->fill.color);
 			if(shape->stroke.type) polygon._printColor = shape->stroke.color;
-			if(polygon._area > 0.f) holesAdd.emplace_back(std::move(polygon));
+			if(polygon._area > 0.) holesAdd.emplace_back(std::move(polygon));
 			else {
 				polygon._area = -polygon._area;
 				shapesAdd.emplace_back(std::move(polygon));
 			}
 		}
 
-		if(maxArea > 0.f) { // swap shapes and hole if needed
+		if(maxArea > 0.) { // swap shapes and hole if needed
 			std::swap(holesAdd, shapesAdd);
 			for(Shape &shape : shapesAdd) std::reverse(shape._points.begin(), shape._points.end());
 			for(Shape &hole : holesAdd) std::reverse(hole._points.begin(), hole._points.end());
@@ -161,7 +161,7 @@ void getShapeFromSVG(const std::string &fileName, std::vector<Shape> &shapes) {
 }
 
 // Find objective zones and regroup them inside their shapes
-std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, float eps) {
+std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, double eps) {
 	// Make black shapes first
 	int B = 0;
 	for(int i = 0; i < (int) shapes.size(); ++i)
@@ -209,20 +209,20 @@ std::vector<std::vector<Shape>> regroupObjZones(std::vector<Shape> &shapes, floa
 	// remove holes area
 	for(std::vector<Shape> &zones : objZones)
 		for(Shape &zone : zones)
-			for(const std::vector<glm::vec2> &hole : zone._holes)
+			for(const std::vector<glm::dvec2> &hole : zone._holes)
 				zone._area -= Globals::polygonArea(hole);
 	for(Shape &b : shapes)
-		for(const std::vector<glm::vec2> &hole : b._holes)
+		for(const std::vector<glm::dvec2> &hole : b._holes)
 			b._area -= Globals::polygonArea(hole);
 
 	return objZones;
 }
 
 // Merge adjacent objectives zones with same print color together
-std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, float eps) {
+std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Shape>> &shapes, double eps) {
 	std::vector<std::vector<Shape>> colorZones;
 	colorZones.reserve(shapes.size());
-	const float eps2 = eps*eps;
+	const double eps2 = eps*eps;
 	for(const std::vector<Shape> &zones : shapes) {
 		// Reorder to have consecutive stroke colors
 		std::vector<int> perm(zones.size());
@@ -237,18 +237,18 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 			while(Z1 < (int) perm.size() && zones[perm[Z1]]._printColor == zones[perm[Z0]]._printColor) ++ Z1;
 
 			// Create graph
-			const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
-			std::map<glm::vec2, int, decltype(vec2Comp)> map(vec2Comp);
-			std::vector<glm::vec2> points;
+			const auto vec2Comp = [](const glm::dvec2 &a, const glm::dvec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
+			std::map<glm::dvec2, int, decltype(vec2Comp)> map(vec2Comp);
+			std::vector<glm::dvec2> points;
 			std::vector<std::vector<int>> links;
 			while(Z0 < Z1) {
 				const Shape &zone = zones[perm[Z0++]];
-				const auto addCycle = [&](const std::vector<glm::vec2> &cycle) {
+				const auto addCycle = [&](const std::vector<glm::dvec2> &cycle) {
 					int prev = -1;
-					for(const glm::vec2 &p : cycle) {
-						std::map<glm::vec2, int>::iterator it = map.lower_bound(p);
+					for(const glm::dvec2 &p : cycle) {
+						std::map<glm::dvec2, int>::iterator it = map.lower_bound(p);
 						int idx=-1;
-						float xmin = p.x-eps, xmax = p.x+eps;
+						double xmin = p.x-eps, xmax = p.x+eps;
 						for(auto it2 = it; it2 != map.end() && it2->first.x <= xmax; ++it2)
 							if(glm::distance2(it2->first, p) < eps2) { idx = it->second; break; }
 						if(idx == -1) for(auto it2 = it; it2 != map.begin() && (--it2)->first.x >= xmin;)
@@ -264,7 +264,7 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 					}
 				};
 				addCycle(zone._points);
-				for(const std::vector<glm::vec2> &hole : zone._holes) addCycle(hole);
+				for(const std::vector<glm::dvec2> &hole : zone._holes) addCycle(hole);
 			}
 
 			// update links
@@ -285,10 +285,10 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 
 			// Create pathes
 			std::vector<bool> toSee(points.size(), true);
-			std::vector<std::vector<glm::vec2>> holes;
+			std::vector<std::vector<glm::dvec2>> holes;
 			size_t start = colorZones.back().size();
 			for(int i = 0; i < (int) toSee.size(); ++i) if(toSee[i] && !links[i].empty()) {
-					std::vector<glm::vec2> path;
+					std::vector<glm::dvec2> path;
 					int j = i;
 					do {
 						toSee[j] = false;
@@ -297,8 +297,8 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 						j = links[j][0];
 					} while(j != i);
 					path.push_back(path[0]);
-					float area = Globals::polygonArea(path);
-					if(area > 0.f) holes.emplace_back(std::move(path));
+					double area = Globals::polygonArea(path);
+					if(area > 0.) holes.emplace_back(std::move(path));
 					else {
 						colorZones.back().emplace_back();
 						colorZones.back().back()._points = std::move(path);
@@ -309,7 +309,7 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 
 			// Add holes
 			std::sort(colorZones.back().begin() + start, colorZones.back().end(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
-			for(std::vector<glm::vec2> &hole : holes)
+			for(std::vector<glm::dvec2> &hole : holes)
 				for(size_t i = start; i < colorZones.back().size(); ++i)
 					if(Globals::isInPoly(colorZones.back()[i]._points, hole[0])) {
 						colorZones.back()[i]._holes.emplace_back(std::move(hole));
@@ -319,7 +319,7 @@ std::vector<std::vector<Shape>> mergeColorZones(const std::vector<std::vector<Sh
 		// sort and remove area holes
 		std::sort(colorZones.back().rbegin(), colorZones.back().rend(), [](const Shape &a, const Shape &b) { return a._area < b._area; });
 		for(Shape &zone : colorZones.back())
-			for(const std::vector<glm::vec2> &hole : zone._holes)
+			for(const std::vector<glm::dvec2> &hole : zone._holes)
 				zone._area -= Globals::polygonArea(hole);
 
 	}

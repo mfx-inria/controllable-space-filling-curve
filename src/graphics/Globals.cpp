@@ -28,25 +28,25 @@ void Globals::initVariables(int layerNb) {
 }
 
 // area is positive in counter-clockwise
-float Globals::polygonArea(const std::vector<glm::vec2> &points) {
-	float area = 0.f;
+double Globals::polygonArea(const std::vector<glm::dvec2> &points) {
+	double area = 0.;
 	for (int i = 1; i < (int) points.size(); i++)
 		area += (points[i-1].x - points[i].x) * (points[i-1].y + points[i].y);
-	return area / 2.f;
+	return area / 2.;
 }
 
 // check if point is inside points
-bool Globals::isInPoly(const std::vector<glm::vec2> &points, const glm::vec2 &point) {
+bool Globals::isInPoly(const std::vector<glm::dvec2> &points, const glm::dvec2 &point) {
 	bool inside = false;
 	for (int i = 1; i < (int) points.size(); i++) {
-		float diff = points[i].y - points[i-1].y;
+		double diff = points[i].y - points[i-1].y;
 		if(!diff) continue;
 		if(points[i].y == point.y) {
 			if(points[i].x > point.x && diff < 0.) inside = !inside;
 		} else if(points[i-1].y == point.y) {
 			if(points[i-1].x > point.x && diff > 0.) inside = !inside;
 		} else if((points[i].y > point.y) != (points[i-1].y > point.y)) {
-			float d = (points[i].x - point.x) * diff + (points[i].x - points[i-1].x) * (point.y - points[i].y);
+			double d = (points[i].x - point.x) * diff + (points[i].x - points[i-1].x) * (point.y - points[i].y);
 			if(diff > 0) { if(d > 0) inside = !inside; }
 			else { if(d < 0) inside = !inside; }
 		}
@@ -55,13 +55,13 @@ bool Globals::isInPoly(const std::vector<glm::vec2> &points, const glm::vec2 &po
 	return inside;
 }
 
-bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec2 &d, float &t) {
-	glm::vec2 v = c - a;
-	glm::vec2 w = d - b;
+bool Globals::intersect(const glm::dvec2 &a, const glm::dvec2 &b, const glm::dvec2 &c, const glm::dvec2 &d, double &t) {
+	glm::dvec2 v = c - a;
+	glm::dvec2 w = d - b;
 	t = (b.x - a.x) * w.y - (b.y - a.y) * w.x;
 	t /= v.x * w.y - v.y * w.x;
 	if(t >= 0. && t <= 1.) {
-		float u;
+		double u;
 		if(std::abs(w.x) > std::abs(w.y)) u = (a.x + t*v.x - b.x) / w.x;
 		else u = (a.y + t*v.y - b.y) / w.y;
 		if(u >= 0. && u <= 1.) return true;
@@ -69,7 +69,7 @@ bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 
 	return false;
 }
 
-bool Globals::intersect(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec2 &d) {
-	float t;
+bool Globals::intersect(const glm::dvec2 &a, const glm::dvec2 &b, const glm::dvec2 &c, const glm::dvec2 &d) {
+	double t;
 	return intersect(a, b, c, d, t);
 }

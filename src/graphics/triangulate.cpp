@@ -236,7 +236,7 @@ void triangulatePoly(const vector<vec2ll> &path, vector<uint> &indices) {
 }
 
 void Shape::triangulate() {
-	float mult = INT32_MAX / max(Globals::_SVGSize.x, Globals::_SVGSize.y);
+	double mult = INT32_MAX / max(Globals::_SVGSize.x, Globals::_SVGSize.y);
 	std::vector<vec2ll> vs;
 	_triangles.resize(_holes.size() + 1);
 	vs.resize(_points.size()-1);

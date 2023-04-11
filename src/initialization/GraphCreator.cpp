@@ -11,15 +11,15 @@
 #include <iostream>
 
 // get voronoi cell's center from its points
-glm::vec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<glm::vec2> &points) {
-	glm::vec2 center(0.f, 0.f);
-	float area = 0.;
+glm::dvec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<glm::dvec2> &points) {
+	glm::dvec2 center(0., 0.);
+	double area = 0.;
 	for(int i = 0; i < (int) cell.size(); ++i) {
-		const glm::vec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
-		const float dx = b.x - a.x;
-		const glm::vec2 s = a+b;
+		const glm::dvec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
+		const double dx = b.x - a.x;
+		const glm::dvec2 s = a+b;
 		area += dx * s.y / 2.;
-		center += dx * (b.y*b + s.y*s + a.y*a) / glm::vec2(6.f, 12.f);
+		center += dx * (b.y*b + s.y*s + a.y*a) / glm::dvec2(6., 12.);
 	}
 	center /= area;
 	return center;
@@ -34,7 +34,7 @@ glm::vec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<g
 struct GraphCVT : public CVT {
 public:
     GraphCVT(const Shape *shape, const Box<double> &box, int layerIndex);
-	Graph optimize(std::vector<glm::vec2> &points);
+	Graph optimize(std::vector<glm::dvec2> &points);
 
     double operator()(const Eigen::VectorXd &x, Eigen::VectorXd &grad);
 
@@ -56,25 +56,25 @@ private:
 //////////////////
 
 // If the point is on the border we pushed it inside the shape and return true
-bool push_inside(const std::vector<glm::vec2> &border, glm::vec2 &a, const float EPS=1e-4f) {
+bool push_inside(const std::vector<glm::dvec2> &border, glm::dvec2 &a, const double EPS=1e-4f) {
 	for(int k = 1; k < (int) border.size(); ++k) {
-		glm::vec2 v = border[k-1] - border[k];
-		float l = glm::length(v);
+		glm::dvec2 v = border[k-1] - border[k];
+		const double l = glm::length(v);
 		v /= l;
-		const float t = std::clamp(glm::dot(v, a-border[k]), 0.f, l);
-		glm::vec2 p = border[k] + t * v;
+		const double t = std::clamp(glm::dot(v, a-border[k]), 0., l);
+		glm::dvec2 p = border[k] + t * v;
 		if(glm::distance(a, p) > EPS) continue;
 		if(t <= EPS) {
 			int j = k+1;
 			if(j == (int) border.size()) j = 1;
-			const glm::vec2 w = border[k] - border[j];
+			const glm::dvec2 w = border[k] - border[j];
 			v += w / glm::length(w);
 			v /= glm::length(v);
 			p = border[k];
 		} else if(t+EPS >= l) {
 			int j = k-2;
 			if(j < 0) j = border.size() - 2;
-			const glm::vec2 w = border[j] - border[k-1];
+			const glm::dvec2 w = border[j] - border[k-1];
 			v += w / glm::length(w);
 			v /= glm::length(v);
 			p = border[k-1];
@@ -159,19 +159,19 @@ void remove4coPoints(Graph &graph) {
 		const auto toAngle = [&](int j) { return std::atan2(graph._points[j].y - graph._points[i].y, graph._points[j].x - graph._points[i].x); };
 		std::vector<int> &l = graph._links[i];
 		std::sort(l.begin(), l.end(), [&](int j, int k) { return toAngle(j) < toAngle(k); });
-		float mul = 1.f;
+		double mul = 1.;
 		loopMul:
 			mul *= .5f; 
 			if(mul < 1e-8f) {
 				// continue;
 				THROW_ERROR("Failed to split valence 4 vertex in two vertices");
 			}
-			const glm::vec2 a = mul * .5f * (graph._points[l[0]] + graph._points[l[1]]) + (1.f - mul) * graph._points[i];
-			const glm::vec2 b = mul * .5f * (graph._points[l[2]] + graph._points[l[3]]) + (1.f - mul) * graph._points[i];
+			const glm::dvec2 a = mul * .5f * (graph._points[l[0]] + graph._points[l[1]]) + (1. - mul) * graph._points[i];
+			const glm::dvec2 b = mul * .5f * (graph._points[l[2]] + graph._points[l[3]]) + (1. - mul) * graph._points[i];
 			for(int s = 0; s < 5; ++s) {
 				// (a, b), (a, 0), (a, 1), (b, 2), (b, 3)
-				const glm::vec2 &p = s < 3 ? a : b;
-				const glm::vec2 &q = s == 0 ? b : graph._points[l[s-1]];
+				const glm::dvec2 &p = s < 3 ? a : b;
+				const glm::dvec2 &q = s == 0 ? b : graph._points[l[s-1]];
 				for(const int c : point2cell[i]) {
 					const int n = graph._cells[c].size();
 					for(int j = 0; j < n; ++j) {
@@ -203,15 +203,15 @@ void remove4coPoints(Graph &graph) {
 
 // Create Graph from an SVG file.
 bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
-	UniformReal<float> dis(-Globals::_d / 20.f, Globals::_d / 20.f);
+	UniformReal<double> dis(-Globals::_d / 20., Globals::_d / 20.);
 	std::mt19937 gen(Globals::_seed + layerIndex);
-	Box<float> box;
-	for(const glm::vec2 &point : shape._points) box.update(point);
-	std::vector<glm::vec2> centroids;
-	for(float x = box.x0; x <= box.x1; x += Globals::_d) {
+	Box<double> box;
+	for(const glm::dvec2 &point : shape._points) box.update(point);
+	std::vector<glm::dvec2> centroids;
+	for(double x = box.x0; x <= box.x1; x += Globals::_d) {
 		int j = 1;
-		for (float y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
-			glm::vec2 point(x, y);
+		for (double y = box.y0; y <= box.y1; y += sqrt(0.75) * Globals::_d) {
+			glm::dvec2 point(x, y);
 			if((++j)&1) point.x -= .5f * Globals::_d;
 			point.x += dis(gen);
 			point.y += dis(gen);
@@ -229,9 +229,9 @@ bool Graph::initGraph(const Shape &shape, Graph &graph, int layerIndex) {
 
 	// push points inside
 	const double EPS = 1e-5f * box.diag();
-	for(glm::vec2 &p : graph._points) {
+	for(glm::dvec2 &p : graph._points) {
 		if(push_inside(shape._points, p, EPS)) continue;
-		for(const std::vector<glm::vec2> &in : shape._holes)
+		for(const std::vector<glm::dvec2> &in : shape._holes)
 			if(push_inside(in, p, EPS)) break;
 	}
 
@@ -448,9 +448,9 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 	graph._cells.resize(_points.size() + _segments.size() - 4);
 
 	// Iterate over cells
-	const auto vec2Comp = [](const glm::vec2 &a, const glm::vec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
-	std::map<glm::vec2, int, decltype(vec2Comp)> m(vec2Comp);
-	const float eps = 5e-5f;
+	const auto vec2Comp = [](const glm::dvec2 &a, const glm::dvec2 &b) { return a.x < b.x || (a.x == b.x && a.y < b.y); };
+	std::map<glm::dvec2, int, decltype(vec2Comp)> m(vec2Comp);
+	const double eps = 5e-5f;
 	for(const VD::cell_type &vd_c : vd.cells()) {
 		if(vd_c.is_degenerate()) continue;
 		uint ind = vd_c.source_index();
@@ -466,14 +466,14 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 		const auto link = [&](int i, int j)->void {
 			if(i == j || std::find(graph._links[i].begin(), graph._links[i].end(), j) != graph._links[i].end()) return;
 			if(ind >= _points.size()) {
-				glm::vec2 A = _segments[ind - _points.size()].first / _scale + _mid;
-				glm::vec2 B = _segments[ind - _points.size()].second / _scale + _mid;
-				const glm::vec2 &p = graph._points[i];
-				glm::vec2 v = graph._points[j] - p;
-				float len = glm::length(v);
+				glm::dvec2 A = _segments[ind - _points.size()].first / _scale + _mid;
+				glm::dvec2 B = _segments[ind - _points.size()].second / _scale + _mid;
+				const glm::dvec2 &p = graph._points[i];
+				glm::dvec2 v = graph._points[j] - p;
+				double len = glm::length(v);
 				v /= len;
-				if(glm::distance(p + v * std::min(len, std::max(0.f, glm::dot(v, A - p))), A) < 4.f*eps
-				   || glm::distance(p + v * std::min(len, std::max(0.f, glm::dot(v, B - p))), B) < 4.f*eps) return;
+				if(glm::distance(p + v * std::min(len, std::max(0., glm::dot(v, A - p))), A) < 4.*eps
+				   || glm::distance(p + v * std::min(len, std::max(0., glm::dot(v, B - p))), B) < 4.*eps) return;
 			}
 			graph._links[i].push_back(j);
 			graph._links[j].push_back(i);
@@ -482,9 +482,9 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 		for(ClipperLib::Path &P0 : clipped) {
 			int start=-1, last=-1;
 			for(const ClipperLib::IntPoint &p0 : P0) {
-				const glm::vec2 p(p0.X / _scale + _mid.x, p0.Y / _scale + _mid.y);
+				const glm::dvec2 p(p0.X / _scale + _mid.x, p0.Y / _scale + _mid.y);
 				int idx = -1;
-				for(auto it = m.lower_bound(p - glm::vec2(eps, 0.f)); it != m.end() && it->first.x < p.x+eps; ++it) {
+				for(auto it = m.lower_bound(p - glm::dvec2(eps, 0.)); it != m.end() && it->first.x < p.x+eps; ++it) {
 					if(glm::distance(p, it->first) < eps) {
 						idx = it->second;
 						break;
@@ -523,7 +523,7 @@ Graph GraphCVT::getGraph(const Eigen::VectorXd &x) {
 	return graph;
 }
 
-Graph GraphCVT::optimize(std::vector<glm::vec2> &points) {
+Graph GraphCVT::optimize(std::vector<glm::dvec2> &points) {
 	Eigen::VectorXd x(2 * points.size());
 	for(int i = 0; i < (int) points.size(); ++i) {
 		x(2*i) = points[i].x;

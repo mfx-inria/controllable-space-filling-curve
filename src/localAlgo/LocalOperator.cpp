@@ -40,11 +40,11 @@ void LocalOperator::updateState(bool state) {
 //
 ///////////
 
-inline bool LocalOperator::switchConditions(float score_dif) {
-	if(score_dif <= 0.f) return true;
+inline bool LocalOperator::switchConditions(double score_dif) {
+	if(score_dif <= 0.) return true;
 	if(_isEnd || score_dif > 0.4f) return false;
 	if(_iter % 400 == 0) return true;
-	return UniformReal<float>(0, 1.f + 10.f * score_dif * _points.size())(_gen) < 1.f;
+	return UniformReal<double>(0, 1. + 10. * score_dif * _points.size())(_gen) < 1.;
 }
 
 ////////////////////////
@@ -69,7 +69,7 @@ bool LocalOperator::checkPaperOp(int currentNode) {
 		else secondDir.push_back(_cLinks[secondDir.back()][0]);
 	}
 
-	std::array<std::pair<float, std::vector<int>>, 8> results;
+	std::array<std::pair<double, std::vector<int>>, 8> results;
 
 	results[0] = checkFlip(firstDir);
 	results[1] = checkFlip(secondDir);
@@ -180,8 +180,8 @@ void LocalOperator::optimize()
 	_final.second.reserve(_final.first.size());
 
 	// get final for printing
-	for(const glm::vec3 &p : _final.first) {
-		glm::vec2 v(p.x, p.y);
+	for(const glm::dvec3 &p : _final.first) {
+		glm::dvec2 v(p.x, p.y);
 		int col = 0;
 		for(const Shape &zone : _colorZones) if(zone.isInside(v)) {
 			col = zone._printColor;
@@ -189,19 +189,19 @@ void LocalOperator::optimize()
 		}
 
 		if(col == 0) _final.second.emplace_back(0, 0, 0);
-		else _final.second.emplace_back((col & 0xff) / 255.f, ((col >> 8) & 0xff) / 255.f, ((col >> 16) & 0xff) / 255.f);
+		else _final.second.emplace_back((col & 0xff) / 255., ((col >> 8) & 0xff) / 255., ((col >> 16) & 0xff) / 255.);
 	}
 
 	// deduce values for points that failed
 	int N = _final.first.size();
 	for(int i = 0; i < N; i++) {
-		if(_final.first[i].z < 1e-4 || _final.first[i].z > 1.f) {
+		if(_final.first[i].z < 1e-4 || _final.first[i].z > 1.) {
 			int past = 1;
-			while(past < N && (_final.first[(i + N - past) % N].z < 1e-4 || _final.first[(i + N - past) % N].z > 1.f))
+			while(past < N && (_final.first[(i + N - past) % N].z < 1e-4 || _final.first[(i + N - past) % N].z > 1.))
 				++ past;
 			if(past < N) {
 				int future = 1;
-				while(future < N && (_final.first[(i + future) % N].z < 1e-4 || _final.first[(i + future) % N].z > 1.f))
+				while(future < N && (_final.first[(i + future) % N].z < 1e-4 || _final.first[(i + future) % N].z > 1.))
 					++ future;
 				_final.first[i].z = (past * _final.first[(i + future) % N].z + future * _final.first[(i + N - past) % N].z) / (past + future);
 			}
@@ -212,11 +212,11 @@ void LocalOperator::optimize()
 			if(past < N) {
 				int future = 1;
 				while(future < N && glm::length(_final.second[(i + future) % N]) < 1e-4) ++ future;
-				_final.second[i] = (float(past) * _final.second[(i + future) % N] + float(future) * _final.second[(i + N - past) % N]) / float(past + future);
+				_final.second[i] = (double(past) * _final.second[(i + future) % N] + double(future) * _final.second[(i + N - past) % N]) / double(past + future);
 			}
 		}
 	}
-	for(glm::vec3 &col : _final.second)
+	for(glm::dvec3 &col : _final.second)
 		col /= (col.x + col.y + col.z);
 }
 
@@ -226,8 +226,8 @@ void LocalOperator::optimize()
 //
 ///////////////////////
 
-std::pair<float, std::vector<int>> LocalOperator::checkFlip(const std::vector<int> &nodes) {
-	std::pair<float, std::vector<int>> ans = { std::numeric_limits<float>::max(), {} };
+std::pair<double, std::vector<int>> LocalOperator::checkFlip(const std::vector<int> &nodes) {
+	std::pair<double, std::vector<int>> ans = { std::numeric_limits<double>::max(), {} };
 	std::vector<int> tmp_nodes(nodes.begin(), nodes.end());
 
 	if (!isLinked(_links[nodes[0]], nodes[3]))
@@ -243,7 +243,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkFlip(const std::vector<in
 				if(isLinked(_cLinks[firstLink], secondLink)) {
 					tmp_nodes.push_back(firstLink);
 					tmp_nodes.push_back(secondLink);
-					float score = checkDirection(tmp_nodes, _segments[0], _segments[1]);
+					double score = checkDirection(tmp_nodes, _segments[0], _segments[1]);
 					if(score < ans.first) ans = { score, tmp_nodes };
 					tmp_nodes.resize(4);
 				}
@@ -256,8 +256,8 @@ std::pair<float, std::vector<int>> LocalOperator::checkFlip(const std::vector<in
 //
 ///////////////////////
 
-std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vector<int> &nodes) {
-	std::pair<float, std::vector<int>> ans = { std::numeric_limits<float>::max(), {} };
+std::pair<double, std::vector<int>> LocalOperator::checkTranspose(const std::vector<int> &nodes) {
+	std::pair<double, std::vector<int>> ans = { std::numeric_limits<double>::max(), {} };
 	std::vector<int> tmp_nodes(nodes.begin(), nodes.begin()+3);
 
 	int inds[3] = { _index[nodes[0]], _index[nodes[1]], _index[nodes[2]] };
@@ -312,7 +312,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vect
 								tmp_nodes.push_back(w.second);
 								tmp_nodes.push_back(v1);
 								tmp_nodes.push_back(v2);
-								float score = checkDirection(tmp_nodes, _segments[2], _segments[3]);
+								double score = checkDirection(tmp_nodes, _segments[2], _segments[3]);
 								if(score < ans.first) ans = { score, tmp_nodes };
 								tmp_nodes.resize(3);
 							}
@@ -327,9 +327,9 @@ std::pair<float, std::vector<int>> LocalOperator::checkTranspose(const std::vect
 //
 ///////////////////////
 
-std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<int> &nodes)
+std::pair<double, std::vector<int>> LocalOperator::checkCross(const std::vector<int> &nodes)
 {
-	std::pair<float, std::vector<int>> ans = { std::numeric_limits<float>::max(), {} };
+	std::pair<double, std::vector<int>> ans = { std::numeric_limits<double>::max(), {} };
 	std::vector<int> tmp_nodes(nodes.begin(), nodes.begin()+3);
 
 	if (!isLinked(_links[nodes[0]], nodes[2]))
@@ -341,7 +341,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<i
 				if(isLinked(_cLinks[link1[i]], link1[j]) && link1[j] != nodes[0] && link1[j] != nodes[2]) {
 					tmp_nodes.push_back(link1[i]);
 					tmp_nodes.push_back(link1[j]);
-					float score = checkDirection(tmp_nodes, _segments[4], _segments[5]);
+					double score = checkDirection(tmp_nodes, _segments[4], _segments[5]);
 					if(score < ans.first) ans = { score, tmp_nodes };
 					tmp_nodes.resize(3);
 				}
@@ -354,12 +354,12 @@ std::pair<float, std::vector<int>> LocalOperator::checkCross(const std::vector<i
 //
 ///////////////////////
 
-std::pair<float, std::vector<int>> LocalOperator::checkZigZag(const std::vector<int> &nodes)
+std::pair<double, std::vector<int>> LocalOperator::checkZigZag(const std::vector<int> &nodes)
 {
 	if (isLinked(_links[nodes[0]], nodes[2]) &&
 		isLinked(_links[nodes[1]], nodes[3]))
 		return { checkDirection(nodes, _segments[6], _segments[7]), nodes };
-	return { std::numeric_limits<float>::max(), {} };
+	return { std::numeric_limits<double>::max(), {} };
 }
 
 ////////////////////////
@@ -368,7 +368,7 @@ std::pair<float, std::vector<int>> LocalOperator::checkZigZag(const std::vector<
 //
 ///////////////////////
 
-const std::pair<std::vector<glm::vec3>, std::vector<glm::vec3>>& LocalOperator::getFinal() const {
+const std::pair<std::vector<glm::dvec3>, std::vector<glm::dvec3>>& LocalOperator::getFinal() const {
 	return _final;
 }
 

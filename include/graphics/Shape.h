@@ -6,21 +6,21 @@
 // Shape containing cycles
 class Shape {
 public:
-	float                               _area;
-	OBJECTIVE                           _objcetive = NOTHING;
-	int                                 _printColor = 0;
-	std::vector<glm::vec2>              _points;
-	std::vector<std::vector<glm::vec2>> _holes;
-	std::vector<std::vector<uint>>      _triangles;
+	double                               _area;
+	OBJECTIVE                            _objcetive = NOTHING;
+	int                                  _printColor = 0;
+	std::vector<glm::dvec2>              _points;
+	std::vector<std::vector<glm::dvec2>> _holes;
+	std::vector<std::vector<uint>>       _triangles;
 
 public:
 	Shape(){}
-	Shape(const std::vector<glm::vec2> &pts) { _points = pts; }
+	Shape(const std::vector<glm::dvec2> &pts) { _points = pts; }
 
-	bool isNear(const glm::vec2 &p, float eps2=1e-10f) const;
-	bool isInside(const glm::vec2 &p) const;
-	bool intersect(const glm::vec2 &a, const glm::vec2 &b) const;
-	void getInter(const glm::vec2 &a, const glm::vec2 &b, std::vector<float> &ts) const;
+	bool isNear(const glm::dvec2 &p, double eps2=1e-10) const;
+	bool isInside(const glm::dvec2 &p) const;
+	bool intersect(const glm::dvec2 &a, const glm::dvec2 &b) const;
+	void getInter(const glm::dvec2 &a, const glm::dvec2 &b, std::vector<double> &ts) const;
 	
 	void triangulate();
 

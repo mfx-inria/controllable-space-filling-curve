@@ -114,7 +114,7 @@ void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 		if(cell.size() < 3) continue;
 
 		// Compute the center of the cell
-		const glm::vec2 center = Graph::getCellCenter(cell, _points);
+		const glm::dvec2 center = Graph::getCellCenter(cell, _points);
 		if(!shape.isInside(center)) continue;
 
 		// connect cell vertices to the center of the cell
@@ -254,18 +254,18 @@ void CycleCreator::fuseIslands() {
 	// j        c -- d
 	for(int i = 0; i < N; ++i) if(!_cLinks[i].empty())
 		for(int j : _links[i]) if(j < N && !_union.same(i, j) && !_cLinks[j].empty()) {
-			glm::vec2 a = _points[i];
-			glm::vec2 b = _points[i];
-			glm::vec2 c = _points[j];
-			glm::vec2 d = _points[j];
-			glm::vec2 u = _points[_cLinks[i][0]] - _points[i];
-			glm::vec2 v = _points[_cLinks[i][1]] - _points[i];
-			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[j] - _points[i]) > 0.f) a += 2e-2f * u;
-			else b += 2e-2f * v;
+			glm::dvec2 a = _points[i];
+			glm::dvec2 b = _points[i];
+			glm::dvec2 c = _points[j];
+			glm::dvec2 d = _points[j];
+			glm::dvec2 u = _points[_cLinks[i][0]] - _points[i];
+			glm::dvec2 v = _points[_cLinks[i][1]] - _points[i];
+			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[j] - _points[i]) > 0.) a += 2e-2 * u;
+			else b += 2e-2 * v;
 			u = _points[_cLinks[j][0]] - _points[j];
 			v = _points[_cLinks[j][1]] - _points[j];
-			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[i] - _points[j]) > 0.f) c += 2e-2f * u;
-			else d += 2e-2f * v;
+			if(glm::dot(u / glm::length(u) - v / glm::length(v), _points[i] - _points[j]) > 0.) c += 2e-2 * u;
+			else d += 2e-2 * v;
 			if(Globals::intersect(a, b, c, d)) {
 				std::swap(a, b);
 				std::swap(_cLinks[i][0], _cLinks[i][1]);
@@ -289,7 +289,7 @@ void CycleCreator::fuseIslands() {
 			createLink(k, k+1);
 			for(int x = 0; x < (int) _links[i].size();) {
 				const int l = _links[i][x];
-				const glm::vec2 &e = _points[l];
+				const glm::dvec2 &e = _points[l];
 				if(Globals::intersect(a, b, e, d)) {
 					_links[i][x] = _links[i].back();
 					_links[i].pop_back();
@@ -303,7 +303,7 @@ void CycleCreator::fuseIslands() {
 			}
 			for(int x = 0; x < (int) _links[j].size();) {
 				const int l = _links[j][x];
-				const glm::vec2 &e = _points[l];
+				const glm::dvec2 &e = _points[l];
 				if(Globals::intersect(c, b, e, d)) {
 					_links[j][x] = _links[j].back();
 					_links[j].pop_back();
@@ -335,9 +335,9 @@ void CycleCreator::removeUnused(const Shape &shape) {
 			std::vector<int> js = getIdxs(i);
 			for(int k = 1; k < (int) js.size(); ++k) for(int l = 0; l < k; ++l) {
 				if(std::find(_links[js[k]].begin(), _links[js[k]].end(), js[l]) == _links[js[k]].end()) {
-					glm::vec2 w = _points[js[l]] - _points[js[k]];
+					glm::dvec2 w = _points[js[l]] - _points[js[k]];
 					w *= 1e-5f / glm::length(w);
-					const glm::vec2 a = _points[js[k]] + w, b = _points[js[l]] - w;
+					const glm::dvec2 a = _points[js[k]] + w, b = _points[js[l]] - w;
 					for(int m : js) for(int n : _links[m]) if(!_cLinks[n].empty())
 						if(Globals::intersect(a, _points[m], b, _points[n]))
 							goto intersect;
