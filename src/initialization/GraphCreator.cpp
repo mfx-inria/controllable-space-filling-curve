@@ -18,10 +18,10 @@ glm::dvec2 Graph::getCellCenter(const std::vector<int> &cell, const std::vector<
 		const glm::dvec2 &a = points[cell[i]], &b = points[cell[(i+1)%cell.size()]];
 		const double dx = b.x - a.x;
 		const glm::dvec2 s = a+b;
-		area += dx * s.y / 2.;
-		center += dx * (b.y*b + s.y*s + a.y*a) / glm::dvec2(6., 12.);
+		area += dx * s.y;
+		center += dx * (b.y*b + s.y*s + a.y*a);
 	}
-	center /= area;
+	center /= area * glm::dvec2(3., 6.);
 	return center;
 }
 

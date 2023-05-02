@@ -90,7 +90,7 @@ void CycleCreator::perfectMatching() {
 
 void CycleCreator::switchLink() {
 	_nbConnectedPoints = 0;
-	for(int i = 0; i < (int) _cLinks.size(); i++) {
+	for(int i = 0; i < (int) _cLinks.size(); ++i) {
 		if(_links[i].size() == 2) {
 			if(_cLinks[i].size() == 2)
 				_cLinks[i].clear();
@@ -144,9 +144,9 @@ void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 		std::unordered_set<int> seen = {tmp};
 		
 		findConnection:
-		// A = B       A --- B
-		//  \ /   ===>  \\ //
-		//   T            T
+		// A = B       A --- B //
+		//  \ /   ===>  \\ //  //
+		//   T            T    //
 		for(int i = 1; i < (int) _links[tmp].size(); ++i) {
 			a = _links[tmp][i];
 			for(int j = 0; j < i; ++j) {
@@ -186,10 +186,11 @@ void CycleCreator::addCenters(const Shape &shape, const Graph &graph) {
 std::vector<int> CycleCreator::getPath(int start, int end) {
 	if(std::find(_links[start].begin(), _links[start].end(), end) != _links[start].end())
 		return {start, end};
-	for(int node : _links[start]) {
-		std::vector<int> path = { start };
-		int prev = start;
+	std::vector<int> path = {start};
+	for(int node : _links[start]) if(_cLinks[node].empty()) {
+		path.resize(1);
 		while(node != -1) {
+			const int prev = path.back();
 			path.push_back(node);
 			int next = -1;
 			for(int i : _links[node]) if(i != prev) {
@@ -199,7 +200,6 @@ std::vector<int> CycleCreator::getPath(int start, int end) {
 					return path;
 				}
 			}
-			prev = node;
 			node = next;
 		}
 	}
@@ -233,7 +233,7 @@ void CycleCreator::fuseIslands() {
 		for(int j : getIdxs(i)) if(!_union.same(i, j)) {
 			for(int k : _cLinks[i]) for(int l : getIdxs(k))
 				if(l == _cLinks[j][0] || l == _cLinks[j][1]) {
-					const std::vector<int> path = getPath(i, j), path2 = getPath(l, k);
+					const std::vector<int> path = getPath(i, j), path2 = getPath(k, l);
 					_nbConnectedPoints += path.size() + path2.size() - 4;
 					removeLink(i, k);
 					removeLink(j, l);

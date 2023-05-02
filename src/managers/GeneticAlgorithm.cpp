@@ -32,7 +32,7 @@ void GeneticAlgorithm::process(const std::string &fileName, int layerNb) try {
 	*/
 } catch(const CSFCerror &e) {
 	std::cerr << e.what() << std::endl;
-	glutLeaveMainLoop();
+	glutExit();
 }
 
 template<typename F>
